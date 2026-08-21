@@ -1,0 +1,241 @@
+import {
+  AccountUpdate,
+  Field,
+  MerkleMap,
+  Mina,
+  PrivateKey,
+  Signature,
+  UInt32,
+  UInt64
+} from "o1js";
+
+import {
+  EMPTY_MAP_ROOT,
+  VorimAiCredentialRegistry,
+  VorimMissionAuthorization,
+  buildVorimCredential,
+  fieldFromString,
+  issuerAuthorizationMessage,
+  missionAuthorizationMessage
+} from "./index.js";
+import { MockVorimClient, type MockVorimAuditEvent, type MockVorimScenario } from "./mock-vorim.js";
+import {
+  authorizeZekoAction,
+  recordZekoSettlement,
+  type AuthorizeZekoActionResult
+} from "./vorim-zeko-adapter.js";
+
+export type VorimZekoDemoResult = {
+  scenario: MockVorimScenario;
+  status: "settled";
+  zkappAddress: string;
+  issuerPublicKey: string;
+  holderPublicKey: string;
+  delegatePublicKey: string;
+  credentialCommitment: string;
+  receiptCommitment: string;
+  receiptCommitmentHex: string;
+  missionCommitment: string;
+  registryRoot: string;
+  expectedRegistryRoot: string;
+  missionRoot: string;
+  expectedMissionRoot: string;
+  emptyRoot: string;
+  decisionId: string;
+  originalIntentHash: string;
+  effectiveIntentHash: string;
+  effectivePayload: Record<string, unknown>;
+  receipt: AuthorizeZekoActionResult["receipt"];
+  receiptCanonicalJson: string;
+  simulatedTxHash: string;
+  auditEvents: MockVorimAuditEvent[];
+  timeline: Array<{ label: string; detail: string }>;
+};
+
+export type RunVorimZekoDemoOptions = {
+  scenario?: MockVorimScenario;
+  proofsEnabled?: boolean;
+};
+
+export async function runVorimZekoDemo({
+  scenario = "allow",
+  proofsEnabled = false
+}: RunVorimZekoDemoOptions = {}): Promise<VorimZekoDemoResult> {
+  const vorim = new MockVorimClient(scenario);
+  const local = await Mina.LocalBlockchain({ proofsEnabled });
+  Mina.setActiveInstance(local);
+
+  const [deployer, holder, delegate] = local.testAccounts;
+  const zkappKey = PrivateKey.random();
+  const issuerKey = PrivateKey.random();
+  const zkapp = new VorimAiCredentialRegistry(zkappKey.toPublicKey());
+  const timeline: VorimZekoDemoResult["timeline"] = [];
+
+  if (proofsEnabled) {
+    await VorimAiCredentialRegistry.compile();
+  }
+
+  const deployTx = await Mina.transaction(deployer, async () => {
+    AccountUpdate.fundNewAccount(deployer);
+    await zkapp.deploy();
+  });
+  await deployTx.prove();
+  await deployTx.sign([deployer.key, zkappKey]).send();
+  timeline.push({ label: "Zeko zkApp deployed", detail: zkapp.address.toBase58() });
+
+  const configureTx = await Mina.transaction(deployer, async () => {
+    await zkapp.configure(issuerKey.toPublicKey());
+  });
+  await configureTx.prove();
+  await configureTx.sign([deployer.key, zkappKey]).send();
+  timeline.push({ label: "Issuer configured", detail: issuerKey.toPublicKey().toBase58() });
+
+  const registry = new MerkleMap();
+  const credential = buildVorimCredential({
+    idTokenPayload: {
+      iss: "https://connect.vorim.ai",
+      aud: "vorim-demo-client",
+      sub: "vorim-subject-demo-001",
+      external_user_id: "customer-user-123",
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 3600
+    },
+    clientId: "vorim-demo-client",
+    scope: "zeko:human-liveness:v1",
+    appSalt: "demo-kms-held-salt",
+    authContext: { flow: "oauth-code", assurance: "palm-liveness" },
+    holderKey: holder.key.toPublicKey(),
+    issuedAtSlot: 1n,
+    expiresAtSlot: 100_000n,
+    nonce: "demo-nonce-001"
+  });
+
+  const credentialWitness = registry.getWitness(credential.credentialKey());
+  registry.set(credential.credentialKey(), credential.commitment());
+  const nullifierWitness = registry.getWitness(credential.nullifierKey());
+  registry.set(credential.nullifierKey(), UInt64.one.value);
+  const issuerSignature = Signature.create(
+    issuerKey,
+    issuerAuthorizationMessage(zkapp.address, UInt64.zero, credential)
+  );
+
+  const anchorTx = await Mina.transaction(deployer, async () => {
+    await zkapp.anchorCredential(
+      credential,
+      issuerSignature,
+      credentialWitness,
+      nullifierWitness
+    );
+  });
+  await anchorTx.prove();
+  await anchorTx.sign([deployer.key]).send();
+  timeline.push({
+    label: "Credential anchored",
+    detail: credential.commitment().toString()
+  });
+
+  const actionPayload = {
+    action: "purchase_compute_credit",
+    amountNanomina: 100_000_000,
+    marketplace: "vorim-demo-marketplace",
+    memo: "user supplied payment memo"
+  };
+  const authorization = await authorizeZekoAction(vorim, {
+    agentId: "agid_vorim_demo_agent_001",
+    network: "zeko:testnet",
+    zkappAddress: zkapp.address.toBase58(),
+    method: "settleMission",
+    payload: actionPayload,
+    requiredScope: "agent:transact",
+    idempotencyKey: `demo:${scenario}`
+  });
+  timeline.push({
+    label: "Vorim runtime decision",
+    detail: `${authorization.receipt.verdict} ${authorization.decisionId}`
+  });
+
+  const missionRegistry = new MerkleMap();
+  const mission = new VorimMissionAuthorization({
+    credentialCommitment: credential.commitment(),
+    delegateKey: delegate.key.toPublicKey(),
+    audienceHash: fieldFromString("vorim-demo-marketplace"),
+    actionHash: authorization.receiptCommitment,
+    settlementRecipient: holder.key.toPublicKey(),
+    maxAmount: UInt64.from(
+      typeof authorization.effectivePayload.amountNanomina === "number"
+        ? authorization.effectivePayload.amountNanomina
+        : 100_000_000
+    ),
+    expiresAtSlot: UInt32.from(90_000),
+    missionNullifier: fieldFromString(`mission:${authorization.decisionId}`)
+  });
+
+  const credentialWitnessAfterAnchor = registry.getWitness(credential.credentialKey());
+  const missionWitness = missionRegistry.getWitness(mission.missionKey());
+  missionRegistry.set(mission.missionKey(), Field(1));
+  const holderSignature = Signature.create(
+    holder.key,
+    missionAuthorizationMessage(zkapp.address, UInt64.zero, mission)
+  );
+
+  const authorizeTx = await Mina.transaction(deployer, async () => {
+    await zkapp.authorizeMission(
+      credential,
+      credentialWitnessAfterAnchor,
+      mission,
+      holderSignature,
+      missionWitness
+    );
+  });
+  await authorizeTx.prove();
+  await authorizeTx.sign([deployer.key]).send();
+  timeline.push({ label: "Mission authorized", detail: mission.commitment().toString() });
+
+  const settleWitness = missionRegistry.getWitness(mission.missionKey());
+  missionRegistry.set(mission.missionKey(), Field(2));
+  const settleTx = await Mina.transaction(delegate, async () => {
+    await zkapp.settleMission(mission, settleWitness, authorization.receiptCommitment);
+  });
+  await settleTx.prove();
+  await settleTx.sign([delegate.key]).send();
+  const simulatedTxHash = `local-zkapp-tx-${authorization.receiptCommitmentHex.slice(2, 18)}`;
+  timeline.push({ label: "Mission settled", detail: simulatedTxHash });
+
+  await recordZekoSettlement(vorim, {
+    agentId: authorization.receipt.agentId,
+    decisionId: authorization.decisionId,
+    receiptCommitment: authorization.receiptCommitmentDecimal,
+    observedReceiptCommitment: authorization.receiptCommitmentDecimal,
+    txHash: simulatedTxHash,
+    settlementSequence: "2",
+    settledRoot: missionRegistry.getRoot().toString()
+  });
+  timeline.push({ label: "Vorim settlement audit emitted", detail: authorization.decisionId });
+
+  return {
+    scenario,
+    status: "settled",
+    zkappAddress: zkapp.address.toBase58(),
+    issuerPublicKey: issuerKey.toPublicKey().toBase58(),
+    holderPublicKey: holder.key.toPublicKey().toBase58(),
+    delegatePublicKey: delegate.key.toPublicKey().toBase58(),
+    credentialCommitment: credential.commitment().toString(),
+    receiptCommitment: authorization.receiptCommitmentDecimal,
+    receiptCommitmentHex: authorization.receiptCommitmentHex,
+    missionCommitment: mission.commitment().toString(),
+    registryRoot: zkapp.registryRoot.get().toString(),
+    expectedRegistryRoot: registry.getRoot().toString(),
+    missionRoot: zkapp.missionRoot.get().toString(),
+    expectedMissionRoot: missionRegistry.getRoot().toString(),
+    emptyRoot: EMPTY_MAP_ROOT.toString(),
+    decisionId: authorization.decisionId,
+    originalIntentHash: authorization.originalIntentHash,
+    effectiveIntentHash: authorization.effectiveIntentHash,
+    effectivePayload: authorization.effectivePayload,
+    receipt: authorization.receipt,
+    receiptCanonicalJson: authorization.receiptCanonicalJson,
+    simulatedTxHash,
+    auditEvents: vorim.auditEvents,
+    timeline
+  };
+}

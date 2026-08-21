@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VorimAI + Zeko Demo</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar" aria-label="Demo controls">
+        <div>
+          <p class="eyebrow">VorimAI + Zeko</p>
+          <h1>Runtime-gated zkApp settlement</h1>
+        </div>
+        <div class="controls" role="group" aria-label="Vorim decision scenario">
+          <button class="scenario is-active" data-scenario="allow">Allow</button>
+          <button class="scenario" data-scenario="modify">Modify</button>
+          <button class="scenario" data-scenario="escalate">Escalate</button>
+          <button class="scenario danger" data-scenario="fallback">Fallback</button>
+          <button class="scenario danger" data-scenario="deny">Deny</button>
+        </div>
+      </section>
+
+      <section class="status-band" aria-live="polite">
+        <div class="status-copy">
+          <span id="status-pill" class="pill">Idle</span>
+          <h2 id="status-title">Ready to run</h2>
+          <p id="status-detail">Choose a Vorim decision path and run the local Zeko flow.</p>
+        </div>
+        <button id="run-button" class="run-button">Run Demo</button>
+      </section>
+
+      <section class="grid">
+        <article class="panel timeline-panel">
+          <div class="panel-head">
+            <h2>Flow</h2>
+            <span id="scenario-label">allow</span>
+          </div>
+          <ol id="timeline" class="timeline">
+            <li><span></span><strong>Waiting</strong><small>No run yet</small></li>
+          </ol>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Commitments</h2>
+            <span>Zeko local</span>
+          </div>
+          <dl class="kv">
+            <div><dt>Receipt</dt><dd id="receipt-commitment">-</dd></div>
+            <div><dt>Mission</dt><dd id="mission-commitment">-</dd></div>
+            <div><dt>Root</dt><dd id="mission-root">-</dd></div>
+            <div><dt>Tx</dt><dd id="tx-hash">-</dd></div>
+          </dl>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Decision</h2>
+            <span id="decision-id">-</span>
+          </div>
+          <dl class="kv">
+            <div><dt>Verdict</dt><dd id="verdict">-</dd></div>
+            <div><dt>Alg</dt><dd id="alg">-</dd></div>
+            <div><dt>Original intent</dt><dd id="original-intent">-</dd></div>
+            <div><dt>Effective intent</dt><dd id="effective-intent">-</dd></div>
+          </dl>
+        </article>
+
+        <article class="panel payload-panel">
+          <div class="panel-head">
+            <h2>Effective Payload</h2>
+            <span>JCS input</span>
+          </div>
+          <pre id="payload">{}</pre>
+        </article>
+
+        <article class="panel audit-panel">
+          <div class="panel-head">
+            <h2>Signed Audit</h2>
+            <span id="audit-count">0 events</span>
+          </div>
+          <div id="audit-events" class="audit-list"></div>
+        </article>
+      </section>
+    </main>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
