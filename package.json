@@ -1,16 +1,16 @@
 {
-  "name": "@vorimai/zeko-credential-registry",
+  "name": "@vorimai/zeko-agent-trust-demo",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "VorimAI human/liveness credential anchoring zkApp for Zeko.",
+  "description": "VorimAI agent identity, scoped permission, and signed-audit demo for Zeko.",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "demo": "npm run build && node build/scripts/demo-local.js",
     "demo:vorim": "npm run build && node build/scripts/demo-vorim-zeko.js",
     "app": "npm run build && node build/scripts/demo-app-server.js",
     "doctor": "npm run build && node build/scripts/doctor.js",
-    "test": "npm run build && node --test build/test/*.test.js",
+    "test": "npm run build && node --test build/test/vorim-agent-trust-registry.test.js build/test/vorim-zeko-adapter.test.js",
     "deploy:zeko": "npm run build && node build/scripts/deploy-zeko.js",
     "smoke:zeko": "npm run build && node build/scripts/smoke-zeko.js"
   },

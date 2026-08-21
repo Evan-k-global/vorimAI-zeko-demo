@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import { AccountUpdate, fetchAccount, Mina, PrivateKey } from "o1js";
 
-import { VorimAiCredentialRegistry } from "../src/index.js";
+import { VorimAgentTrustRegistry } from "../src/index.js";
 
 const deployerPrivateKey = process.env.ZEKO_DEPLOYER_PRIVATE_KEY;
 const zkappPrivateKey = process.env.ZEKO_ZKAPP_PRIVATE_KEY;
@@ -24,7 +24,7 @@ Mina.setActiveInstance(network);
 const deployer = PrivateKey.fromBase58(deployerPrivateKey);
 const zkappKey = PrivateKey.fromBase58(zkappPrivateKey);
 const issuerKey = PrivateKey.fromBase58(issuerPrivateKey);
-const zkapp = new VorimAiCredentialRegistry(zkappKey.toPublicKey());
+const zkapp = new VorimAgentTrustRegistry(zkappKey.toPublicKey());
 
 const deployerAccount = await fetchAccount(
   { publicKey: deployer.toPublicKey() },
@@ -36,8 +36,8 @@ if (!deployerAccount.account) {
   );
 }
 
-console.log("Compiling VorimAiCredentialRegistry...");
-await VorimAiCredentialRegistry.compile();
+console.log("Compiling VorimAgentTrustRegistry...");
+await VorimAgentTrustRegistry.compile();
 
 const tx = await Mina.transaction(
   { sender: deployer.toPublicKey(), fee: 100_000_000 },

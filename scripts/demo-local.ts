@@ -13,9 +13,9 @@ import {
 
 import {
   EMPTY_MAP_ROOT,
-  VorimAiCredentialRegistry,
+  VorimAgentTrustRegistry,
   VorimMissionAuthorization,
-  buildVorimCredential,
+  buildVorimAgentCredential,
   fieldFromString,
   issuerAuthorizationMessage,
   missionAuthorizationMessage
@@ -25,31 +25,34 @@ const proofsEnabled = process.env.PROOFS_ENABLED === "true";
 const local = await Mina.LocalBlockchain({ proofsEnabled });
 Mina.setActiveInstance(local);
 
-const [deployer, holder, delegate] = local.testAccounts;
+const [deployer, agent, delegate] = local.testAccounts;
 const zkappKey = PrivateKey.random();
 const issuerKey = PrivateKey.random();
-const zkapp = new VorimAiCredentialRegistry(zkappKey.toPublicKey());
+const zkapp = new VorimAgentTrustRegistry(zkappKey.toPublicKey());
 
 if (proofsEnabled) {
-  console.log("Compiling VorimAiCredentialRegistry...");
-  await VorimAiCredentialRegistry.compile();
+  console.log("Compiling VorimAgentTrustRegistry...");
+  await VorimAgentTrustRegistry.compile();
 }
 
 const registry = new MerkleMap();
-const credential = buildVorimCredential({
-  idTokenPayload: {
-    iss: "https://connect.vorim.ai",
-    aud: "vorim-demo-client",
-    sub: "vorim-subject-demo-001",
-    external_user_id: "customer-user-123",
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 3600
+const credential = buildVorimAgentCredential({
+  agentAssertion: {
+    issuer: "https://api.vorim.ai",
+    audience: "vorim-demo-client",
+    agentId: "agid_vorim_demo_agent_001",
+    agentDid: "did:vorim:agent:demo-001",
+    agentPublicKeyFingerprint: "fp_demo_agent_key",
+    runtimeId: "local-o1js-demo",
+    scopes: ["agent:execute", "agent:transact"],
+    issuedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 3600_000).toISOString()
   },
   clientId: "vorim-demo-client",
-  scope: "zeko:human-liveness:v1",
+  scope: "agent:transact",
   appSalt: "replace-with-kms-held-salt",
-  authContext: { flow: "oauth-code", assurance: "palm-liveness" },
-  holderKey: holder.key.toPublicKey(),
+  authContext: { flow: "runtime-decision", controlPlane: "vorim-agent-trust" },
+  agentKey: agent.key.toPublicKey(),
   issuedAtSlot: 1n,
   expiresAtSlot: 100_000n,
   nonce: "demo-nonce-001"
@@ -96,7 +99,7 @@ const mission = new VorimMissionAuthorization({
   delegateKey: delegate.key.toPublicKey(),
   audienceHash: fieldFromString("vorim-demo-marketplace"),
   actionHash: fieldFromString("purchase:compute-credit:100"),
-  settlementRecipient: holder.key.toPublicKey(),
+  settlementRecipient: agent.key.toPublicKey(),
   maxAmount: UInt64.from(100_000_000),
   expiresAtSlot: UInt32.from(90_000),
   missionNullifier: fieldFromString("demo-mission-nullifier-001")
@@ -105,8 +108,8 @@ const mission = new VorimMissionAuthorization({
 const credentialWitnessAfterAnchor = registry.getWitness(credential.credentialKey());
 const missionWitness = missionRegistry.getWitness(mission.missionKey());
 missionRegistry.set(mission.missionKey(), Field(1));
-const holderSignature = Signature.create(
-  holder.key,
+const agentSignature = Signature.create(
+  agent.key,
   missionAuthorizationMessage(zkapp.address, UInt64.zero, mission)
 );
 
@@ -115,7 +118,7 @@ const authorizeTx = await Mina.transaction(deployer, async () => {
     credential,
     credentialWitnessAfterAnchor,
     mission,
-    holderSignature,
+    agentSignature,
     missionWitness
   );
 });
@@ -140,6 +143,6 @@ console.log(JSON.stringify({
   emptyRoot: EMPTY_MAP_ROOT.toString(),
   credentialCommitment: credential.commitment().toString(),
   missionCommitment: mission.commitment().toString(),
-  subjectCommitment: credential.subjectCommitment.toString(),
+  agentCommitment: credential.agentCommitment.toString(),
   nullifier: credential.nullifier.toString()
 }, null, 2));

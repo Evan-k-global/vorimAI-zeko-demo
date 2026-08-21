@@ -1,133 +1,51 @@
 # Demo to Production
 
-This repository is the public Zeko integration scaffold for VorimAI. It is designed to make the partnership concrete:
+This repository is a Vorim adapter demo for Zeko. It models Vorim correctly as the trust layer for AI agents: cryptographic identity, scoped permissions, runtime control, and signed tamper-evident audit records.
 
-1. Vorim verifies a live human off-chain.
-2. Zeko anchors a privacy-preserving credential commitment.
-3. A Vorim-verified holder authorizes a narrowly scoped mission for an app, agent, wallet, or marketplace.
-4. The delegated key settles that mission once.
+## Public and Private Boundary
 
-The repository is not the Vorim issuer service and is not a substitute for Vorim's production security review.
+Suitable for this public demo repository:
 
-## Public and private boundary
-
-The following are suitable for a public demo repository, subject to the upstream
-licenses and commercial terms of the protocol components it adapts:
-
-- the original o1js zkApp contract;
+- the o1js zkApp scaffold for agent credential commitments, mission authorization, and one-time settlement;
 - commitment and nullifier helpers;
-- generic OAuth adapter boundaries;
+- the structural Vorim runtime adapter boundary;
+- local mock Vorim client behavior for `allow`, `modify`, `escalate`, `fallback`, and `deny`;
 - demo scripts, tests, and integration documentation.
 
-This repository is not a new protocol and should not represent Agent
-Mission-Bound Auth, x402, Magic City, or Santaclawz as Vorim-authored or
-Apache-licensed. The adapter uses the existing Mission-Bound Auth names
-`zk-mission-bundle-v1`, `mission-bound-auth-receipt-v1`, and `mba-registry-v1`;
-records x402 as the payment rail; records Santaclawz as the agent rail; and
-treats Magic City as the compatible runtime/orchestration pattern.
+Keep private or upstream-controlled:
 
-Keep the following in Vorim-controlled private infrastructure:
+- Vorim API keys, agent private keys, production audit signing material, policy rules, and customer identifiers;
+- raw action payloads that regulated customers would not want stored in a public chain or public repository;
+- production relayer credentials, deployer keys, archive/indexer infrastructure, and witness services;
+- Agent Mission-Bound Auth, x402, Magic City, and Santaclawz implementation code unless its upstream license or commercial agreement allows redistribution.
 
-- Vorim OAuth client secrets, JWT signing material, JWKS operations, and KMS keys;
-- palm, liveness, biometric, and risk-policy implementation;
-- subject mapping, salts, raw OAuth tokens, user records, and operational telemetry;
-- production relayer credentials, deployer keys, and archive/indexer infrastructure;
-- Vorim trademarks, SDK code, and assets unless Vorim has expressly licensed them.
+Do not commit `.env` files, private keys, raw regulated payloads, customer identifiers, or production audit bundles.
 
-Do not commit `.env` files, private keys, raw `id_token` values, biometric data, or user identifiers. The testnet deployment in the README uses a provisional issuer and is not a production deployment.
+## Protocol Boundary
 
-## 1. Reproduce the demo
+This repository is not a new protocol and should not represent Agent Mission-Bound Auth, x402, Magic City, or Santaclawz as Vorim-authored or Apache-licensed.
 
-Use the pinned dependency set and run the local checks:
+The adapter uses the existing Mission-Bound Auth names `zk-mission-bundle-v1`, `mission-bound-auth-receipt-v1`, and `mba-registry-v1`; records x402 as the payment rail; records Santaclawz as the agent rail; and treats Magic City as the compatible runtime/orchestration pattern.
 
-```bash
-npm ci
-npm test
-npm run demo
-PROOFS_ENABLED=true npm run demo
-```
+## Production Work
 
-For a Zeko testnet deployment, create `.env` from `.env.example`, fund a deployer, and run:
+Vorim and Zeko should co-design these pieces:
 
-```bash
-npm run deploy:zeko
-```
+1. A Vorim SDK method that mints or exports a portable signed receipt for a runtime decision.
+2. Exact Poseidon field packing for agent identity, decision ID, verdict, expiry, policy version, original intent hash, effective intent hash, x402 payment context, and settlement commitment.
+3. A durable witness/indexer service for agent credential and mission roots.
+4. A settlement verifier that reads Zeko events/archive state and proves the committed receipt appeared in the settled mission.
+5. A production x402 reserve/release path for paid agent work.
+6. A Magic City/Santaclawz-compatible orchestration path for hired or delegated agent execution.
 
-Run the smoke script only against a fresh deployment unless you replace its in-memory witness stores with a persisted/indexed witness service:
+## Launch Order
 
-```bash
-ZEKO_ZKAPP_ADDRESS=<fresh-deployment-address> npm run smoke:zeko
-```
+**Phase 1: Agent trust commitment.** Show Vorim runtime decisions becoming signed, portable receipts whose commitments are authorized and settled on Zeko.
 
-## 2. Connect the real Vorim flow
+**Phase 2: Payment and orchestration.** Add x402 payment context, reserve/release semantics, and Magic City/Santaclawz execution provenance.
 
-Vorim should own the mobile and issuer boundary:
+**Phase 3: Verifier package.** Ship an offline verifier that reconciles Vorim signed audit, Mission-Bound Auth receipt bundle, x402 payment state, and Zeko settlement state.
 
-1. Register the production OAuth client, redirect URI, scopes, and mobile application with Vorim.
-2. Use the Vorim mobile SDK to complete palm/liveness verification and receive an authorization code.
-3. Send the code to a Vorim backend, never to the chain or a public client secret.
-4. Exchange the code at `https://api.vorim.ai/oauth2/token`.
-5. Validate state, nonce, issuer, audience, expiry, and token type.
-6. Verify the `id_token` cryptographic signature against Vorim's published JWKS, or use the agreed authenticated backend flow if Vorim uses an HMAC-signed token.
-7. Derive the subject commitment and scoped nullifier with a KMS-held salt. Do not place the subject identifier or salt on-chain.
-8. Bind the credential to the holder's Zeko public key and sign the issuer authorization message.
+## License Boundary
 
-The included `src/vorim-oauth.ts` contains the exchange and claim-shape scaffolding. Its JWT payload decoding is not signature verification. Production code must complete that check before it signs a `VorimAiCredential`.
-
-## 3. Run the two-step issuer flow
-
-The issuer or a trusted relayer should maintain the current credential sequence and Merkle witnesses, then submit:
-
-```text
-anchorCredential(credential, issuerSignature, credentialWitness, nullifierWitness)
-```
-
-After the holder approves a mission, submit:
-
-```text
-authorizeMission(credential, mission, holderSignature, credentialWitness, missionNullifierWitness)
-```
-
-The mission should use canonical values for:
-
-- `audienceHash`: the exact destination app, agent, wallet, or marketplace;
-- `actionHash`: the exact allowed operation and version;
-- `maxAmount`: the maximum amount the mission can settle;
-- `expiresAtSlot`: a short, explicit expiry no later than the credential expiry;
-- `missionNullifier`: a fresh one-time value;
-- `delegateKey`: the agent or application key allowed to settle.
-
-The downstream payment or asset transfer should be implemented in a separate settlement contract or adapter. This registry proves authorization and one-time consumption; it does not custody funds by itself.
-
-## 4. Production deployment checklist
-
-- Create a fresh production zkApp address and record its verification key.
-- Use a KMS or hardware-backed Vorim issuer key and separate deployer key.
-- Configure the issuer exactly once, then verify the on-chain issuer key and deployment address.
-- Pin the o1js version and reproduce the contract build in CI.
-- Persist registry and mission Merkle witnesses through an indexer or durable service.
-- Serialize sequence updates so two issuer requests cannot sign the same sequence.
-- Monitor `credentialAnchored`, `missionAuthorized`, and `missionSettled` events.
-- Add alerting for issuer-key rotation, failed proofs, replay attempts, expired missions, and witness-root drift.
-- Test invalid issuer signatures, invalid holder signatures, wrong delegates, expired credentials, expired missions, duplicate nullifiers, and repeated settlement.
-- Add key rotation and migration procedures before onboarding real users.
-- Complete Vorim's security, privacy, legal, and product review.
-
-## 5. Recommended launch order
-
-**Phase 1: Deploy Vorim on Zeko.** Ship the live-human credential anchor and show that no biometric data, OAuth token, or stable subject identifier is exposed on-chain.
-
-**Phase 2: Upgrade with Zeko authorization.** Add mission-bound delegation to the first partner workflow. Market the bounded action, expiry, amount limit, delegate key, and one-time settlement as the native Zeko advantage.
-
-This keeps the initial integration small while giving Vorim a clear reason to make Zeko part of the product story.
-
-## License boundary
-
-No blanket Apache-2.0 license is asserted for this demo or for the protocol
-stack it references. Existing protocol implementations keep their own licenses
-and commercial terms. The local Agent Mission-Bound Auth source indicates
-Business Source License 1.1 with a future Apache-2.0 change license; x402,
-Magic City, Santaclawz, Zeko, and Vorim materials may have separate terms.
-Confirm ownership and licensing with Vorim, Zeko Labs, and the relevant protocol
-owners before distributing or productionizing a package. This is a technical
-packaging recommendation, not legal advice.
+No blanket Apache-2.0 license is asserted for this demo or for the protocol stack it references. Existing protocol implementations keep their own licenses and commercial terms. Confirm ownership and licensing with Vorim, Zeko Labs, and the relevant protocol owners before distributing or productionizing a package. This is a technical packaging recommendation, not legal advice.

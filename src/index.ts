@@ -1,20 +1,20 @@
 export {
   EMPTY_MAP_ROOT,
-  VorimAiCredential,
-  VorimAiCredentialAnchoredEvent,
-  VorimAiCredentialRegistry,
+  VorimAgentCredential,
+  VorimAgentCredentialAnchoredEvent,
+  VorimAgentTrustRegistry,
   VorimMissionAuthorization,
   VorimMissionAuthorizedEvent,
   VorimMissionSettledEvent,
   issuerAuthorizationMessage,
   missionAuthorizationMessage
-} from "./VorimAiCredentialRegistry.js";
+} from "./VorimAgentTrustRegistry.js";
 export {
-  assertVorimIdTokenClaims,
-  buildVorimCredential,
-  decodeJwtPayload,
-  exchangeVorimCode
-} from "./vorim-oauth.js";
+  assertVorimAgentAssertion,
+  buildVorimAgentCredential,
+  type BuildAgentCredentialInput,
+  type VorimAgentAssertion
+} from "./vorim-agent-identity.js";
 export { canonicalJson, fieldFromHexDigest, fieldFromObject, fieldFromString, sha256Hex } from "./hash.js";
 export {
   authorizeZekoAction,

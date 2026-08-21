@@ -25,23 +25,23 @@ const ISSUER_AUTHORIZATION_NAMESPACE = Field(7_003);
 const MISSION_NAMESPACE = Field(7_004);
 const MISSION_AUTHORIZATION_NAMESPACE = Field(7_005);
 
-export class VorimAiCredential extends Struct({
-  subjectCommitment: Field,
+export class VorimAgentCredential extends Struct({
+  agentCommitment: Field,
   clientIdHash: Field,
   authContextHash: Field,
   scopeHash: Field,
-  holderKey: PublicKey,
+  agentKey: PublicKey,
   issuedAtSlot: UInt64,
   expiresAtSlot: UInt64,
   nullifier: Field
 }) {
   fields(): Field[] {
     return [
-      this.subjectCommitment,
+      this.agentCommitment,
       this.clientIdHash,
       this.authContextHash,
       this.scopeHash,
-      ...this.holderKey.toFields(),
+      ...this.agentKey.toFields(),
       this.issuedAtSlot.value,
       this.expiresAtSlot.value,
       this.nullifier
@@ -53,7 +53,7 @@ export class VorimAiCredential extends Struct({
   }
 
   credentialKey(): Field {
-    return Poseidon.hash([CREDENTIAL_NAMESPACE, this.subjectCommitment, this.scopeHash]);
+    return Poseidon.hash([CREDENTIAL_NAMESPACE, this.agentCommitment, this.scopeHash]);
   }
 
   nullifierKey(): Field {
@@ -93,9 +93,9 @@ export class VorimMissionAuthorization extends Struct({
   }
 }
 
-export class VorimAiCredentialAnchoredEvent extends Struct({
+export class VorimAgentCredentialAnchoredEvent extends Struct({
   credentialCommitment: Field,
-  subjectCommitment: Field,
+  agentCommitment: Field,
   scopeHash: Field,
   nullifier: Field,
   registryRoot: Field,
@@ -125,7 +125,7 @@ export class VorimMissionSettledEvent extends Struct({
 export function issuerAuthorizationMessage(
   registryAddress: PublicKey,
   sequence: UInt64,
-  credential: VorimAiCredential
+  credential: VorimAgentCredential
 ): Field[] {
   return [
     ISSUER_AUTHORIZATION_NAMESPACE,
@@ -148,7 +148,7 @@ export function missionAuthorizationMessage(
   ];
 }
 
-export class VorimAiCredentialRegistry extends SmartContract {
+export class VorimAgentTrustRegistry extends SmartContract {
   @state(PublicKey) issuerKey = State<PublicKey>();
   @state(Field) registryRoot = State<Field>();
   @state(UInt64) sequence = State<UInt64>();
@@ -158,7 +158,7 @@ export class VorimAiCredentialRegistry extends SmartContract {
   @state(Field) lastMissionCommitment = State<Field>();
 
   events = {
-    credentialAnchored: VorimAiCredentialAnchoredEvent,
+    credentialAnchored: VorimAgentCredentialAnchoredEvent,
     missionAuthorized: VorimMissionAuthorizedEvent,
     missionSettled: VorimMissionSettledEvent
   };
@@ -188,7 +188,7 @@ export class VorimAiCredentialRegistry extends SmartContract {
   }
 
   @method async anchorCredential(
-    credential: VorimAiCredential,
+    credential: VorimAgentCredential,
     issuerSignature: Signature,
     credentialWitness: MerkleMapWitness,
     nullifierWitness: MerkleMapWitness
@@ -198,7 +198,7 @@ export class VorimAiCredentialRegistry extends SmartContract {
     const sequence = this.sequence.getAndRequireEquals();
 
     issuerKey.isEmpty().assertFalse("registry_not_configured");
-    credential.subjectCommitment.assertNotEquals(Field(0));
+    credential.agentCommitment.assertNotEquals(Field(0));
     credential.nullifier.assertNotEquals(Field(0));
     credential.expiresAtSlot.value.assertGreaterThan(
       credential.issuedAtSlot.value,
@@ -229,9 +229,9 @@ export class VorimAiCredentialRegistry extends SmartContract {
     this.lastCredentialCommitment.set(credentialCommitment);
     this.emitEvent(
       "credentialAnchored",
-      new VorimAiCredentialAnchoredEvent({
+      new VorimAgentCredentialAnchoredEvent({
         credentialCommitment,
-        subjectCommitment: credential.subjectCommitment,
+        agentCommitment: credential.agentCommitment,
         scopeHash: credential.scopeHash,
         nullifier: credential.nullifier,
         registryRoot: nullifierRootAfter,
@@ -241,17 +241,17 @@ export class VorimAiCredentialRegistry extends SmartContract {
   }
 
   @method async authorizeMission(
-    credential: VorimAiCredential,
+    credential: VorimAgentCredential,
     credentialWitness: MerkleMapWitness,
     mission: VorimMissionAuthorization,
-    holderSignature: Signature,
+    agentSignature: Signature,
     missionWitness: MerkleMapWitness
   ) {
     const registryRoot = this.registryRoot.getAndRequireEquals();
     const currentMissionRoot = this.missionRoot.getAndRequireEquals();
     const missionSequence = this.missionSequence.getAndRequireEquals();
 
-    credential.holderKey.isEmpty().assertFalse("holder_key_required");
+    credential.agentKey.isEmpty().assertFalse("agent_key_required");
     mission.delegateKey.isEmpty().assertFalse("delegate_key_required");
     mission.settlementRecipient.isEmpty().assertFalse("settlement_recipient_required");
     mission.missionNullifier.assertNotEquals(Field(0));
@@ -271,12 +271,12 @@ export class VorimAiCredentialRegistry extends SmartContract {
     credentialRoot.assertEquals(registryRoot);
     credentialKey.assertEquals(credential.credentialKey());
 
-    holderSignature
+    agentSignature
       .verify(
-        credential.holderKey,
+        credential.agentKey,
         missionAuthorizationMessage(this.address, missionSequence, mission)
       )
-      .assertTrue("invalid_holder_mission_signature");
+      .assertTrue("invalid_agent_mission_signature");
 
     const missionCommitment = mission.commitment();
     const [missionRootBefore, missionKey] = missionWitness.computeRootAndKey(Field(0));

@@ -13,35 +13,37 @@ import {
 } from "o1js";
 
 import {
-  VorimAiCredentialRegistry,
+  VorimAgentTrustRegistry,
   VorimMissionAuthorization,
-  buildVorimCredential,
+  buildVorimAgentCredential,
   fieldFromString,
   issuerAuthorizationMessage,
   missionAuthorizationMessage
 } from "../src/index.js";
 
-describe("VorimAiCredentialRegistry", () => {
+describe("VorimAgentTrustRegistry", () => {
   it("anchors a signed Vorim credential and burns its nullifier", async () => {
     const local = await Mina.LocalBlockchain({ proofsEnabled: false });
     Mina.setActiveInstance(local);
-    const [deployer, holder, delegate] = local.testAccounts;
+    const [deployer, agent, delegate] = local.testAccounts;
     const issuerKey = PrivateKey.random();
     const zkappKey = PrivateKey.random();
-    const zkapp = new VorimAiCredentialRegistry(zkappKey.toPublicKey());
+    const zkapp = new VorimAgentTrustRegistry(zkappKey.toPublicKey());
     const registry = new MerkleMap();
 
-    const credential = buildVorimCredential({
-      idTokenPayload: {
-        iss: "https://connect.vorim.ai",
-        aud: "vorim-demo-client",
-        sub: "vorim-subject-demo-001",
-        external_user_id: "customer-user-123"
+    const credential = buildVorimAgentCredential({
+      agentAssertion: {
+        issuer: "https://api.vorim.ai",
+        audience: "vorim-demo-client",
+        agentId: "agid_vorim_test_agent_001",
+        agentDid: "did:vorim:agent:test-001",
+        agentPublicKeyFingerprint: "fp_test_agent_key",
+        scopes: ["agent:execute", "agent:transact"]
       },
       clientId: "vorim-demo-client",
-      scope: "zeko:human-liveness:v1",
+      scope: "agent:transact",
       appSalt: "test-salt",
-      holderKey: holder.key.toPublicKey(),
+      agentKey: agent.key.toPublicKey(),
       issuedAtSlot: 1n,
       expiresAtSlot: 10n,
       nonce: "test-nonce"
@@ -90,7 +92,7 @@ describe("VorimAiCredentialRegistry", () => {
       delegateKey: delegate.key.toPublicKey(),
       audienceHash: fieldFromString("test-marketplace"),
       actionHash: fieldFromString("buy:compute-credit:10"),
-      settlementRecipient: holder.key.toPublicKey(),
+      settlementRecipient: agent.key.toPublicKey(),
       maxAmount: UInt64.from(10_000_000),
       expiresAtSlot: UInt32.from(9),
       missionNullifier: fieldFromString("test-mission-nullifier")
@@ -98,8 +100,8 @@ describe("VorimAiCredentialRegistry", () => {
     const credentialWitnessAfterAnchor = registry.getWitness(credential.credentialKey());
     const missionWitness = missionRegistry.getWitness(mission.missionKey());
     missionRegistry.set(mission.missionKey(), Field(1));
-    const holderSignature = Signature.create(
-      holder.key,
+    const agentSignature = Signature.create(
+      agent.key,
       missionAuthorizationMessage(zkapp.address, UInt64.zero, mission)
     );
 
@@ -108,7 +110,7 @@ describe("VorimAiCredentialRegistry", () => {
         credential,
         credentialWitnessAfterAnchor,
         mission,
-        holderSignature,
+        agentSignature,
         missionWitness
       );
     });

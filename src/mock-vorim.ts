@@ -96,7 +96,7 @@ export class MockVorimClient implements VorimRuntimeClient {
       return { ...base, decision: "deny", reason: "Policy denied settlement." };
     }
     if (this.scenario === "escalate") {
-      return { ...base, decision: "escalate", reason: "Amount requires human approval." };
+      return { ...base, decision: "escalate", reason: "Amount requires manual approval." };
     }
     if (this.scenario === "modify") {
       return {

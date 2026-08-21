@@ -8,7 +8,7 @@ const zekoArchive = process.env.ZEKO_ARCHIVE_URL ?? "https://archive.testnet.zek
 const required = [
   "VORIM_CLIENT_ID",
   "VORIM_CLIENT_SECRET",
-  "VORIM_REDIRECT_URI",
+  "VORIM_AGENT_ID",
   "VORIM_ISSUER_PRIVATE_KEY",
   "ZEKO_DEPLOYER_PRIVATE_KEY",
   "ZEKO_ZKAPP_PRIVATE_KEY"

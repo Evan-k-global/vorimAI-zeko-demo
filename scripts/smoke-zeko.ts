@@ -13,9 +13,9 @@ import {
 } from "o1js";
 
 import {
-  VorimAiCredentialRegistry,
+  VorimAgentTrustRegistry,
   VorimMissionAuthorization,
-  buildVorimCredential,
+  buildVorimAgentCredential,
   fieldFromString,
   issuerAuthorizationMessage,
   missionAuthorizationMessage
@@ -39,36 +39,39 @@ Mina.setActiveInstance(
 
 const deployer = PrivateKey.fromBase58(deployerPrivateKey);
 const issuer = PrivateKey.fromBase58(issuerPrivateKey);
-const holder = PrivateKey.fromBase58(process.env.VORIM_HOLDER_PRIVATE_KEY ?? deployerPrivateKey);
+const agent = PrivateKey.fromBase58(process.env.VORIM_HOLDER_PRIVATE_KEY ?? deployerPrivateKey);
 const delegate = PrivateKey.fromBase58(process.env.VORIM_DELEGATE_PRIVATE_KEY ?? deployerPrivateKey);
-const zkapp = new VorimAiCredentialRegistry(PublicKey.fromBase58(address));
+const zkapp = new VorimAgentTrustRegistry(PublicKey.fromBase58(address));
 
 const zkappAccount = await fetchAccount({ publicKey: zkapp.address }, graphQlUrl);
 if (!zkappAccount.account) {
   throw new Error(`Zeko zkApp account lookup failed: ${zkappAccount.error?.statusText ?? "not found"}`);
 }
 
-console.log("Compiling VorimAiCredentialRegistry for live smoke...");
-await VorimAiCredentialRegistry.compile();
+console.log("Compiling VorimAgentTrustRegistry for live smoke...");
+await VorimAgentTrustRegistry.compile();
 
 const issuedAtSlot = 0;
 const credentialExpiry = 4_000_000_000n;
 const missionExpiry = UInt32.from(4_000_000_000);
 const nonce = `zeko-smoke-${Date.now()}`;
-const credential = buildVorimCredential({
-  idTokenPayload: {
-    iss: "https://connect.vorim.ai",
-    aud: "vorim-demo-client",
-    sub: `smoke-subject-${nonce}`,
-    external_user_id: `smoke-user-${nonce}`,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 3600
+const credential = buildVorimAgentCredential({
+  agentAssertion: {
+    issuer: "https://api.vorim.ai",
+    audience: "vorim-demo-client",
+    agentId: `agid_smoke_${nonce}`,
+    agentDid: `did:vorim:agent:${nonce}`,
+    agentPublicKeyFingerprint: `fp_${nonce}`,
+    runtimeId: "zeko-smoke",
+    scopes: ["agent:execute", "agent:transact"],
+    issuedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 3600_000).toISOString()
   },
   clientId: "vorim-demo-client",
-  scope: "zeko:human-liveness:v1",
+  scope: "agent:transact",
   appSalt: "smoke-test-only",
-  authContext: { flow: "oauth-code", assurance: "palm-liveness" },
-  holderKey: holder.toPublicKey(),
+  authContext: { flow: "runtime-decision", controlPlane: "vorim-agent-trust" },
+  agentKey: agent.toPublicKey(),
   issuedAtSlot: BigInt(issuedAtSlot),
   expiresAtSlot: credentialExpiry,
   nonce
@@ -98,7 +101,7 @@ const mission = new VorimMissionAuthorization({
   delegateKey: delegate.toPublicKey(),
   audienceHash: fieldFromString("vorim-demo-marketplace"),
   actionHash: fieldFromString("purchase:compute-credit:100"),
-  settlementRecipient: holder.toPublicKey(),
+  settlementRecipient: agent.toPublicKey(),
   maxAmount: UInt64.from(100_000_000),
   expiresAtSlot: missionExpiry,
   missionNullifier: fieldFromString(`mission-${nonce}`)
@@ -106,8 +109,8 @@ const mission = new VorimMissionAuthorization({
 const credentialWitnessAfterAnchor = registry.getWitness(credential.credentialKey());
 const missionWitness = missionRegistry.getWitness(mission.missionKey());
 missionRegistry.set(mission.missionKey(), Field(1));
-const holderSignature = Signature.create(
-  holder,
+const agentSignature = Signature.create(
+  agent,
   missionAuthorizationMessage(zkapp.address, UInt64.zero, mission)
 );
 
@@ -116,7 +119,7 @@ const authorizeTx = await Mina.transaction(feePayer, async () => {
     credential,
     credentialWitnessAfterAnchor,
     mission,
-    holderSignature,
+    agentSignature,
     missionWitness
   );
 });
