@@ -35,6 +35,27 @@ The adapter does not replace the canonical Mission-Bound Auth sidecar,
 checkpoint API, bundle verifier, x402 rail implementation, Magic City
 orchestration service, or Santaclawz agent network.
 
+## Use Upstream Repos For Production Behavior
+
+This repository should not accumulate local pseudo-implementations of the
+protocol stack. When the demo needs production behavior, wire to the upstream
+systems instead:
+
+- Use `agent-mission-bound-auth` for passports, mission proposals, approvals,
+  checkpoint enforcement, portable bundles, receipt schemas, verifier CLI, and
+  Zeko anchoring scripts.
+- Use `zeko-x402` for payment rail metadata, Base/EVM compatibility,
+  reserve/release semantics, and payment-to-proof reconciliation.
+- Use Magic City for session orchestration, approval UX, runner boundaries,
+  proof queueing, and Zeko anchor lifecycle.
+- Use Santaclawz for external agent discovery, hire routing, paid execution,
+  return-package provenance, and reputation/readiness surfaces.
+
+The Vorim-specific work belongs at the adapter boundary: take Vorim's agent
+identity, scoped runtime decision, signed audit event, and policy-modified
+payload, then bind those facts into the existing mission/payment/execution
+protocols.
+
 ## Licensing Boundary
 
 No blanket Apache-2.0 license is asserted for the protocol stack in this demo.

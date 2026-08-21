@@ -10,6 +10,46 @@ The flow is:
 4. The Zeko zkApp anchors the agent credential commitment and authorizes a one-time mission bound to that receipt commitment.
 5. Settlement emits the same commitment so Vorim signed audit records reconcile with Zeko state.
 
+## What Vorim Gets From Zeko
+
+Zeko gives Vorim a verifiable settlement and receipt layer for customers who need more than a vendor-hosted audit log. Vorim already gives agents identity, scoped permissions, runtime decisions, and signed action records. Zeko lets Vorim turn the most important parts of that trust record into compact commitments that are independently checkable without exposing regulated payloads.
+
+For Vorim's own offering to regulated customers, that creates a stronger product story:
+
+- **Independent audit reconciliation:** a customer, auditor, or counterparty can reconcile a Vorim `decisionId`, signed audit event, and Mission-Bound Auth receipt commitment against Zeko state.
+- **Privacy-preserving proof surface:** Zeko carries commitments and roots, not raw prompts, customer data, policy payloads, secrets, or action contents.
+- **Portable trust records:** Vorim's signed audit trail can become part of a `mission-bound-auth-receipt-v1` / `zk-mission-bundle-v1` package that survives outside one vendor dashboard.
+- **Agent payment confidence:** when paired with x402 reserve/release, paid agent work can move toward "release on committed result" rather than "pay and trust the service."
+- **Enterprise control plane upgrade:** Vorim can sell not only runtime policy checks, but verifiable policy-to-execution-to-settlement evidence for regulated AI agents.
+
+Put simply: Vorim remains the agent trust layer; Zeko makes the trust record harder to dispute, easier to verify, and safer to share.
+
+## V1 Shipped
+
+This repo is a working v1 adapter demo. It ships:
+
+- a local o1js `VorimAgentTrustRegistry` for agent credential commitments, one-time mission authorization, and settlement commitment emission;
+- a Vorim runtime adapter based on the corrected TypeScript file from Vorim;
+- fail-closed handling for `fallback`, resolved handling for `escalate`, and effective-payload handling for `modify`;
+- Poseidon/o1js `Field` receipt commitments, not placeholder SHA strings;
+- `mission-bound-auth-receipt-v1`, `zk-mission-bundle-v1`, and `mba-registry-v1` naming so the demo aligns to the existing Agent Mission-Bound Auth vocabulary;
+- a local browser/CLI demo showing Vorim decision -> receipt commitment -> Zeko mission authorization -> settlement audit.
+
+This v1 is intentionally narrow. It proves the adapter shape and the reconciliation loop. It does not replace the production Mission-Bound Auth sidecar, x402 payment contracts/facilitator flow, Magic City orchestration runtime, or Santaclawz agent network.
+
+## V2 Unlock
+
+The bigger v2 is where this becomes commercially interesting for Vorim customers:
+
+- **Vorim portable signed receipt:** a real SDK/control-plane method that mints the exportable receipt bundle, instead of composing calls client-side.
+- **Canonical field packing:** a shared Poseidon packing spec for Vorim decision fields, effective payload hash, policy version, expiry, x402 payment context, Mission-Bound Auth receipt fields, and Zeko settlement commitments.
+- **x402 reserve/release:** use the existing x402-on-Zeko rail so funds can reserve up front and release only when the committed result/receipt satisfies the release condition.
+- **Magic City orchestration:** use Magic City's execution-session model, proof queue, Zeko anchoring, and checkpoint lifecycle rather than rebuilding orchestration in this repo.
+- **Santaclawz execution provenance:** when external agents are hired, use Santaclawz for discovery, signed work routing, paid execution, and return-package provenance rather than copying that network model here.
+- **Offline verifier:** produce a verifier package that checks Vorim signed audit, Mission-Bound Auth bundle, x402 payment state, and Zeko settlement state together.
+
+V2 is the product unlock: Vorim can offer regulated customers a full agent trust evidence chain, from scoped permission decision to paid execution and independently verifiable settlement.
+
 ## Architecture
 
 ```mermaid
@@ -44,6 +84,15 @@ sequenceDiagram
 This repository is a Vorim adapter demo over existing Zeko ecosystem protocols. It does not invent a new protocol or rebrand Santaclawz, x402, Mission-Bound Auth, or Magic City under this project.
 
 The demo uses the established Agent Mission-Bound Auth names `zk-mission-bundle-v1`, `mission-bound-auth-receipt-v1`, and `mba-registry-v1`; records x402 as the payment rail; records Santaclawz as the external agent rail; and treats Magic City as the compatible orchestration/runtime pattern. See [docs/PROTOCOL_INTEGRATION.md](docs/PROTOCOL_INTEGRATION.md).
+
+Production integration should use the canonical upstream systems:
+
+- `agent-mission-bound-auth` for passports, mission approvals, checkpoint verification, portable bundles, receipt schemas, verifier CLI, and Zeko anchoring scripts.
+- `zeko-x402` for x402 payment rail metadata, EVM/Base payment compatibility, reserve/release behavior, and payment-to-proof reconciliation.
+- Magic City for execution sessions, approval UX, runner boundaries, proof queues, and Zeko anchor orchestration.
+- Santaclawz for external agent discovery, hire routing, paid execution, return packages, and agent reputation/provenance.
+
+This repo should stay an adapter and demo surface. It should not grow substitute pseudo-protocols for those repos.
 
 ## Files
 
