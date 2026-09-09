@@ -128,7 +128,7 @@ await authorizeTx.sign([deployer.key]).send();
 const settleWitness = missionRegistry.getWitness(mission.missionKey());
 missionRegistry.set(mission.missionKey(), Field(2));
 const settleTx = await Mina.transaction(delegate, async () => {
-  await zkapp.settleMission(mission, settleWitness, fieldFromString("demo-settlement-result"));
+  await zkapp.settleMission(mission, settleWitness, mission.actionHash);
 });
 await settleTx.prove();
 await settleTx.sign([delegate.key]).send();

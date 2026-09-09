@@ -314,6 +314,8 @@ export class VorimAgentTrustRegistry extends SmartContract {
     const delegate = this.sender.getAndRequireSignature();
     mission.delegateKey.assertEquals(delegate);
     resultHash.assertNotEquals(Field(0));
+    resultHash.assertEquals(mission.actionHash, "result_commitment_mismatch");
+    this.currentSlot.requireBetween(UInt32.zero, mission.expiresAtSlot);
 
     const [missionRootBefore, missionKey] = missionWitness.computeRootAndKey(Field(1));
     missionRootBefore.assertEquals(currentMissionRoot);

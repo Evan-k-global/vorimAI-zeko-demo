@@ -22,13 +22,14 @@ import {
   missionAuthorizationMessage
 } from "../src/index.js";
 
-const graphQlUrl = process.env.ZEKO_GRAPHQL_URL ?? "https://testnet.zeko.io/graphql";
-const archiveUrl = process.env.ZEKO_ARCHIVE_URL ?? "https://archive.testnet.zeko.io/graphql";
+const graphQlUrl = process.env.ZEKO_GRAPHQL_URL ?? "https://sepolia.zeko.io/graphql";
+const archiveUrl = process.env.ZEKO_ARCHIVE_URL ?? "https://sepolia.zeko.io/graphql";
 const address = process.env.ZEKO_ZKAPP_ADDRESS;
 const deployerPrivateKey = process.env.ZEKO_DEPLOYER_PRIVATE_KEY;
 const issuerPrivateKey = process.env.VORIM_ISSUER_PRIVATE_KEY;
-// Zeko custom-network strings are runtime-supported; this o1js build narrows the TS type.
-const zekoO1jsNetworkId = (process.env.ZEKO_O1JS_NETWORK_ID ?? "zeko") as NetworkId;
+// Zeko Sepolia reports zeko:testnet but uses the standard testnet signing domain.
+const zekoO1jsNetworkId = (process.env.ZEKO_O1JS_NETWORK_ID ?? "testnet") as NetworkId;
+const transactionFee = Number(process.env.TX_FEE ?? 200_000);
 
 if (!address || !deployerPrivateKey || !issuerPrivateKey) {
   throw new Error(
@@ -94,7 +95,7 @@ const issuerSignature = Signature.create(
   issuerAuthorizationMessage(zkapp.address, UInt64.zero, credential)
 );
 
-const feePayer = { sender: deployer.toPublicKey(), fee: 100_000_000 };
+const feePayer = { sender: deployer.toPublicKey(), fee: transactionFee };
 
 const anchorTx = await Mina.transaction(feePayer, async () => {
   await zkapp.anchorCredential(credential, issuerSignature, credentialWitness, nullifierWitness);
@@ -136,9 +137,9 @@ await authorizeTx.sign([deployer]).send();
 const settleWitness = missionRegistry.getWitness(mission.missionKey());
 missionRegistry.set(mission.missionKey(), Field(2));
 const settleTx = await Mina.transaction(
-  { sender: delegate.toPublicKey(), fee: 100_000_000 },
+    { sender: delegate.toPublicKey(), fee: transactionFee },
   async () => {
-    await zkapp.settleMission(mission, settleWitness, fieldFromString(`result-${nonce}`));
+    await zkapp.settleMission(mission, settleWitness, mission.actionHash);
   }
 );
 await settleTx.prove();
@@ -147,6 +148,8 @@ await settleTx.sign([delegate]).send();
 console.log(JSON.stringify({
   zkappAddress: address,
   graphQlUrl,
+  protocolNetworkId: process.env.ZEKO_PROTOCOL_NETWORK_ID ?? "zeko:sepolia",
+  o1jsNetworkId: zekoO1jsNetworkId,
   issuedAtSlot,
   step1: {
     credentialCommitment: credential.commitment().toString(),

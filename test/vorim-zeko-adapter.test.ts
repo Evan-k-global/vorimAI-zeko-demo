@@ -7,18 +7,31 @@ import {
   MockVorimClient,
   authorizeZekoAction,
   hashIntent,
-  recordZekoSettlement
+  recordZekoSettlement,
+  type AuthorizeZekoActionInput
 } from "../src/index.js";
 
-const baseInput = {
+const baseInput: AuthorizeZekoActionInput = {
   agentId: "agid_vorim_demo_agent_001",
-  network: "zeko:testnet",
+  protocolNetworkId: "zeko:sepolia",
   zkappAddress: "B62qdemoZkapp111111111111111111111111111111111111111111",
   method: "settleMission",
   payload: {
     action: "purchase_compute_credit",
-    amountNanomina: 100_000_000,
+    amountNativeUnits: 100_000_000,
     memo: "raw memo"
+  },
+  payment: {
+    requestId: "x402req-test",
+    paymentId: "x402pay-test",
+    settlementRail: "zeko",
+    networkId: "zeko:sepolia",
+    asset: { symbol: "sETH", decimals: 9, standard: "native" },
+    payer: "B62qpayer",
+    payTo: "B62qpayee",
+    sessionId: "vorim-test",
+    maxSpendUsd: "1.00",
+    idempotencyKey: "vorim-test-payment-0001"
   },
   idempotencyKey: "test"
 };
@@ -28,21 +41,18 @@ describe("vorim zeko adapter", () => {
     const vorim = new MockVorimClient("allow");
     const result = await authorizeZekoAction(vorim, baseInput);
 
-    assert.equal(result.receipt.verdict, "allow");
-    assert.equal(result.receipt.alg, "Ed25519");
+    assert.equal(result.vorimBinding.verdict, "allow");
+    assert.equal(result.vorimBinding.approvalAlg, "Ed25519");
     assert.equal(result.receipt.schema, "mission-bound-auth-receipt-v1");
     assert.match(result.receipt.receiptId, /^receipt_[a-f0-9]{24}$/);
     assert.equal(typeof result.receipt.receiptHash, "string");
-    assert.equal(result.receipt.mission.protocol, "mission-bound-agent-auth-v1");
-    assert.equal(result.receipt.policy.decisionId, result.decisionId);
-    assert.equal(result.receipt.holder.alg, "Ed25519");
+    assert.equal(result.receiptVerification.valid, true);
+    assert.equal(result.receipt.mission.issuer, "https://api.vorim.ai");
     assert.equal(result.receipt.holder.proofScheme, "digest-holder-proof-v1");
-    assert.equal(result.receipt.trace.boundaryEventVersion, "mission-bound-boundary-event-v1");
     assert.equal(result.receipt.payment.rail, "x402");
-    assert.equal(result.receipt.proof.registryVersion, "mba-registry-v1");
     assert.equal(result.receipt.proof.statementKind, "mission-bound-trace-compliance-v1");
     assert.equal(result.receipt.proof.proofSystem, "signed-commitment-transition");
-    assert.equal(result.receipt.adapter.bundleVersion, "zk-mission-bundle-v1");
+    assert.equal(result.receipt.capabilityArtifact, null);
     assert.equal(result.effectiveIntentHash, hashIntent(baseInput.payload));
     assert.ok(result.receiptCommitment instanceof Field);
     assert.equal(vorim.auditEvents.length, 1);
@@ -52,10 +62,11 @@ describe("vorim zeko adapter", () => {
     const vorim = new MockVorimClient("modify");
     const result = await authorizeZekoAction(vorim, baseInput);
 
-    assert.equal(result.receipt.verdict, "modify");
-    assert.equal(result.receipt.alg, "Ed25519");
+    assert.equal(result.vorimBinding.verdict, "modify");
+    assert.equal(result.vorimBinding.approvalAlg, "Ed25519");
     assert.notEqual(result.effectiveIntentHash, result.originalIntentHash);
-    assert.equal(result.effectivePayload.amountNanomina, 50_000_000);
+    assert.equal(result.effectivePayload.amountNativeUnits, 50_000_000);
+    assert.equal(result.payment.amount, "50000000");
     assert.equal(result.effectivePayload.memo, "policy-redacted");
   });
 
@@ -63,9 +74,9 @@ describe("vorim zeko adapter", () => {
     const vorim = new MockVorimClient("escalate");
     const result = await authorizeZekoAction(vorim, baseInput);
 
-    assert.equal(result.receipt.verdict, "allow");
-    assert.equal(result.receipt.alg, "P-256");
-    assert.equal(result.receipt.holder.alg, "P-256");
+    assert.equal(result.vorimBinding.verdict, "allow");
+    assert.equal(result.vorimBinding.approvalAlg, "P-256");
+    assert.equal(result.receipt.holder.proofScheme, "digest-holder-proof-v1");
     assert.equal(vorim.auditEvents.length, 1);
   });
 

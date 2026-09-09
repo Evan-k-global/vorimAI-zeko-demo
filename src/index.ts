@@ -20,14 +20,15 @@ export {
   authorizeZekoAction,
   fieldToHex,
   hashIntent,
-  receiptPoseidonCommitment,
+  receiptFieldCommitment,
   recordZekoSettlement,
   type AuthorizeZekoActionInput,
   type AuthorizeZekoActionResult,
   type VorimDecisionVerdict,
   type VorimRuntimeClient,
   type VorimRuntimeDecision,
-  type VorimZekoAuthorizationReceipt
+  type VorimDecisionBinding,
+  type X402PaymentTemplate
 } from "./vorim-zeko-adapter.js";
 export {
   MockVorimClient,

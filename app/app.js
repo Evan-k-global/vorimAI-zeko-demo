@@ -45,8 +45,8 @@ function renderResult(result) {
   fields.missionRoot.textContent = compact(result.missionRoot, 18);
   fields.txHash.textContent = result.simulatedTxHash;
   fields.decisionId.textContent = result.decisionId;
-  fields.verdict.textContent = result.receipt.verdict;
-  fields.alg.textContent = result.receipt.alg;
+  fields.verdict.textContent = result.vorimBinding.verdict;
+  fields.alg.textContent = result.vorimBinding.approvalAlg;
   fields.originalIntent.textContent = compact(result.originalIntentHash, 18);
   fields.effectiveIntent.textContent = compact(result.effectiveIntentHash, 18);
   fields.payload.textContent = JSON.stringify(result.effectivePayload, null, 2);
@@ -74,7 +74,7 @@ async function runDemo() {
       return;
     }
     renderResult(body);
-    setStatus("Settled", "Receipt committed on Zeko", `${body.receipt.verdict} decision ${body.decisionId}`);
+    setStatus("Settled", "Local adapter commitment complete", `${body.vorimBinding.verdict} decision ${body.decisionId}`);
   } catch (error) {
     setStatus("Error", "Demo failed", error instanceof Error ? error.message : String(error));
   } finally {

@@ -104,7 +104,7 @@ export class MockVorimClient implements VorimRuntimeClient {
         decision: "modify",
         modifiedPayload: {
           ...payload,
-          amountNanomina: 50_000_000,
+          amountNativeUnits: 50_000_000,
           memo: "policy-redacted"
         }
       };

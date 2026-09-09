@@ -119,8 +119,15 @@ describe("VorimAgentTrustRegistry", () => {
 
     const settleWitness = missionRegistry.getWitness(mission.missionKey());
     missionRegistry.set(mission.missionKey(), Field(2));
+    await assert.rejects(async () => {
+      const mismatchTx = await Mina.transaction(delegate, async () => {
+        await zkapp.settleMission(mission, settleWitness, fieldFromString("wrong-result"));
+      });
+      await mismatchTx.prove();
+      await mismatchTx.sign([delegate.key]).send();
+    });
     const settleTx = await Mina.transaction(delegate, async () => {
-      await zkapp.settleMission(mission, settleWitness, fieldFromString("test-result"));
+      await zkapp.settleMission(mission, settleWitness, mission.actionHash);
     });
     await settleTx.prove();
     await settleTx.sign([delegate.key]).send();

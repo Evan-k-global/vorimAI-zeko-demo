@@ -1,0 +1,8 @@
+[submodule "vendor/agent-mission-bound-auth"]
+	path = vendor/agent-mission-bound-auth
+	url = https://github.com/Evan-k-global/agent-mission-bound-auth.git
+	branch = codex/fresh-zeko-sepolia-deployment
+[submodule "vendor/zeko-x402"]
+	path = vendor/zeko-x402
+	url = https://github.com/zeko-labs/x402-zeko.git
+	branch = main

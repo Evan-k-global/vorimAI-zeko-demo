@@ -1,53 +1,47 @@
-# Demo to Production
+# Demo To Production
 
-This repository is a Vorim adapter demo for Zeko. It models Vorim correctly as the trust layer for AI agents: cryptographic identity, scoped permissions, runtime control, and signed tamper-evident audit records.
+The local demo proves the Vorim decision-to-receipt composition, not a production payment or settlement.
 
-## Public and Private Boundary
+## Keep Private
 
-Suitable for this public demo repository:
+- Vorim client secrets, agent keys, approval keys, audit signing material, and policy rules.
+- Zeko deployer, relayer, holder, verifier, and zkApp private keys.
+- x402 payer authorization payloads and facilitator credentials.
+- MBA witness stores, salts, private proof inputs, and regulated action contents.
+- Magic City session data and SantaClawz private return artifacts.
 
-- the o1js zkApp scaffold for agent credential commitments, mission authorization, and one-time settlement;
-- commitment and nullifier helpers;
-- the structural Vorim runtime adapter boundary;
-- local mock Vorim client behavior for `allow`, `modify`, `escalate`, `fallback`, and `deny`;
-- demo scripts, tests, and integration documentation.
+## Production Gate
 
-Keep private or upstream-controlled:
+Before calling this production, require all of the following:
 
-- Vorim API keys, agent private keys, production audit signing material, policy rules, and customer identifiers;
-- raw action payloads that regulated customers would not want stored in a public chain or public repository;
-- production relayer credentials, deployer keys, archive/indexer infrastructure, and witness services;
-- Agent Mission-Bound Auth, x402, Magic City, and Santaclawz implementation code unless its upstream license or commercial agreement allows redistribution.
+1. Vorim exposes a supported portable signed-receipt or decision-evidence export.
+2. The Vorim decision is mapped into MBA's signed capability and proof-bound public statement.
+3. MBA production-strict receipt verification passes with a concrete compliance proof and domain attestation.
+4. The canonical Zeko `MissionRegistry` verifies the approval, escrow, revocation absence, nullifier, receipt commitment, and proof before release.
+5. x402 authorization is signed after the final Vorim payload and settled through the upstream contract or facilitator.
+6. Chain events and account state are read back independently before Vorim emits settlement success.
+7. Witness and idempotency state are durable and scoped to the exact deployment.
 
-Do not commit `.env` files, private keys, raw regulated payloads, customer identifiers, or production audit bundles.
+## Active Chain Profile
 
-## Protocol Boundary
+Use the pinned upstream Zeko Ethereum Sepolia profile:
 
-This repository is not a new protocol and should not represent Agent Mission-Bound Auth, x402, Magic City, or Santaclawz as Vorim-authored or Apache-licensed.
+```env
+ZEKO_PROTOCOL_NETWORK_ID=zeko:sepolia
+ZEKO_GRAPHQL_URL=https://sepolia.zeko.io/graphql
+ZEKO_ARCHIVE_URL=https://sepolia.zeko.io/graphql
+ZEKO_O1JS_NETWORK_ID=testnet
+ZEKO_NATIVE_ASSET=sETH
+ZEKO_NATIVE_DECIMALS=9
+TX_FEE=200000
+```
 
-The adapter uses the existing Mission-Bound Auth names `zk-mission-bundle-v1`, `mission-bound-auth-receipt-v1`, and `mba-registry-v1`; emits the canonical receipt sections; records x402 as a payment context rail; records Santaclawz as the agent rail; and treats Magic City as the compatible runtime/orchestration pattern.
+Do not collapse the protocol identifier, GraphQL-reported network ID, and signing domain into one value.
 
-The live Zeko scripts default to public Zeko testnet endpoints and `ZEKO_O1JS_NETWORK_ID=zeko`. If a deployment uses the newer `zeko-x402` Zeko Ethereum Sepolia rail, keep the x402 settlement/facilitator implementation in `zeko-x402` and pass only the resulting payment context digest into this adapter.
+## Orchestration Extensions
 
-## Production Work
+Add Magic City only through its real session/checkpoint/proof APIs. Add SantaClawz only through its real discovery, x402 plan, hire, execution, payment-state, and return-package APIs. Do not substitute receipt labels for those integrations.
 
-Vorim and Zeko should co-design these pieces:
+## Licensing
 
-1. A Vorim SDK method that mints or exports a portable signed receipt for a runtime decision.
-2. Exact Poseidon field packing for agent identity, decision ID, verdict, expiry, policy version, original intent hash, effective intent hash, x402 payment context, and settlement commitment.
-3. A durable witness/indexer service for agent credential and mission roots.
-4. A settlement verifier that reads Zeko events/archive state and proves the committed receipt appeared in the settled mission.
-5. A production x402 reserve/release path for paid agent work.
-6. A Magic City/Santaclawz-compatible orchestration path for hired or delegated agent execution.
-
-## Launch Order
-
-**Phase 1: Agent trust commitment.** Show Vorim runtime decisions becoming signed, portable receipts whose commitments are authorized and settled on Zeko.
-
-**Phase 2: Payment and orchestration.** Add x402 payment context, reserve/release semantics, and Magic City/Santaclawz execution provenance.
-
-**Phase 3: Verifier package.** Ship an offline verifier that reconciles Vorim signed audit, Mission-Bound Auth receipt bundle, x402 payment state, and Zeko settlement state.
-
-## License Boundary
-
-No blanket Apache-2.0 license is asserted for this demo or for the protocol stack it references. Existing protocol implementations keep their own licenses and commercial terms. Confirm ownership and licensing with Vorim, Zeko Labs, and the relevant protocol owners before distributing or productionizing a package. This is a technical packaging recommendation, not legal advice.
+No blanket Apache-2.0 license is asserted here. The pinned upstream repositories keep their own licenses and commercial terms. Confirm rights and deployment terms with the relevant owners before distribution or production use.

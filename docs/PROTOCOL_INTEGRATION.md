@@ -1,87 +1,66 @@
 # Protocol Integration Boundary
 
-This demo is a Vorim adapter over existing Zeko ecosystem protocols. It does
-not claim to define a new settlement, payment, agent-hiring, or mission-auth
-protocol.
+This repository is a Vorim adapter over existing Zeko ecosystem components. It does not define a new mission-auth, payment, orchestration, or agent-hiring protocol.
 
-## Canonical Protocols Used
+## Code Actually Used
 
-- Agent Mission-Bound Auth: portable mission, approval, checkpoint, receipt,
-  and Zeko registry vocabulary. This repo uses the canonical names
-  `zk-mission-bundle-v1`, `mission-bound-auth-receipt-v1`, and `mba-registry-v1`,
-  and emits a receipt object with the canonical receipt sections.
-- x402 on Zeko: payment rail metadata and paid-work reconciliation surface.
-  This demo records `payment.rail: "x402"` plus a payment context digest and
-  keeps exact settlement, reserve/release, and facilitator behavior as external
-  `zeko-x402` concerns.
-- Magic City: product/runtime orchestration model for sessions, approvals,
-  checkpoints, proof queues, and Zeko anchoring. The demo is
-  `magic-city-compatible`; it is not Magic City itself.
-- Santaclawz: external agent discovery/hiring/execution rail in the Magic City
-  model. The demo records `agentRail: "santaclawz"` as provenance for the agent
-  leg, but does not copy or relicense Santaclawz infrastructure.
+The repository pins two upstream implementations as git submodules and runtime dependencies:
+
+- `vendor/agent-mission-bound-auth` at the Zeko Ethereum Sepolia network-ID update. The adapter calls its policy, capability, boundary-event, trace, receipt, schema-verifier, and canonical field-encoding functions.
+- `vendor/zeko-x402` at the merged Zeko Ethereum Sepolia settlement update. The adapter calls its x402 v2 payment builder after Vorim returns the effective payload.
+
+`npm run test:upstream-mba` compiles and runs the upstream `MissionComplianceProgram` and `MissionRegistry` trustless settlement simulation. No contract source is copied into this repository under a different name or license.
 
 ## Adapter Responsibility
 
-Vorim contributes the runtime governance decision:
+The Vorim adapter owns only this composition:
 
-1. run the action through Vorim's decision path;
-2. fail closed on `fallback` or unresolved `escalate`;
-3. apply `modifiedPayload` when policy returns `modify`;
-4. commit the approved effective intent into a
-   schema-shaped `mission-bound-auth-receipt-v1` receipt;
-5. bind that receipt commitment into the Zeko mission authorization and signed
-   audit events.
+1. Call Vorim `beforeAction` with the proposed action and scope.
+2. Reject `fallback`, `deny`, or unresolved `escalate` outcomes.
+3. Replace the proposed payload with `modifiedPayload` when required.
+4. Build the x402 payment context from the effective amount.
+5. Bind the Vorim decision fields into an MBA policy and receipt statement.
+6. Verify the MBA trace and receipt before emitting the signed Vorim authorization event.
+7. Emit settlement success only after the observed commitment matches the expected commitment.
 
-## Current Chain Split
+The `VorimDecisionBinding` remains adjacent to the canonical MBA receipt because the current upstream receipt schema has `additionalProperties: false`. Injecting Vorim-specific fields into that receipt would make it non-conformant.
 
-This zkApp demo defaults to Zeko testnet endpoints:
+Vorim's `approvalAlg` also stays separate from `receipt.holder.proofScheme`. A P-256 human approval is not the same cryptographic leg as an agent holder proof or an o1js/Pallas zkApp signature.
 
-- `https://testnet.zeko.io/graphql`
-- `https://archive.testnet.zeko.io/graphql`
-- `ZEKO_O1JS_NETWORK_ID=zeko`
+## Network Identity Split
 
-The newer `zeko-x402` Zeko-native payment rail is documented separately as
-Zeko Ethereum Sepolia (`X402_ZEKO_NETWORK=zeko:sepolia`) with its own graph
-endpoint and signing-domain settings. Keep those payment rails in `zeko-x402`
-and pass their resulting payment context into this adapter receipt instead of
-rebuilding the rail here.
+The active Zeko Ethereum Sepolia profile uses three different identifiers:
 
-The adapter does not replace the canonical Mission-Bound Auth sidecar,
-checkpoint API, bundle verifier, x402 rail implementation, Magic City
-orchestration service, or Santaclawz agent network.
+- protocol routing: `zeko:sepolia`
+- GraphQL response: `zeko:testnet`
+- o1js signing domain: `testnet`
 
-## Use Upstream Repos For Production Behavior
+GraphQL and archive/read endpoint: `https://sepolia.zeko.io/graphql`.
 
-This repository should not accumulate local pseudo-implementations of the
-protocol stack. When the demo needs production behavior, wire to the upstream
-systems instead:
+The public testnet endpoints in the general Zeko builder docs remain useful for that network, but they are not the active executable target of the pinned MBA and x402 deployments.
 
-- Use `agent-mission-bound-auth` for passports, mission proposals, approvals,
-  checkpoint enforcement, portable bundles, receipt schemas, verifier CLI, and
-  Zeko anchoring scripts.
-- Use `zeko-x402` for payment rail metadata, Base/EVM compatibility,
-  reserve/release semantics, and payment-to-proof reconciliation.
-- Use Magic City for session orchestration, approval UX, runner boundaries,
-  proof queueing, and Zeko anchor lifecycle.
-- Use Santaclawz for external agent discovery, hire routing, paid execution,
-  return-package provenance, and reputation/readiness surfaces.
+## Local Versus Production
 
-The Vorim-specific work belongs at the adapter boundary: take Vorim's agent
-identity, scoped runtime decision, signed audit event, and policy-modified
-payload, then bind those facts into the existing mission/payment/execution
-protocols.
+The browser demo is deliberately local. It prepares an unsigned x402 payload, uses `digest-holder-proof-v1`, and commits the verified receipt through the small adapter simulation contract.
 
-## Licensing Boundary
+Production settlement must use the upstream path:
 
-No blanket Apache-2.0 license is asserted for the protocol stack in this demo.
-Existing protocol implementations keep their own licenses and commercial terms.
-In particular, the local Agent Mission-Bound Auth source indicates Business
-Source License 1.1 with a future Apache-2.0 change license. Do not redistribute
-or productionize derived protocol code unless the applicable upstream license or
-commercial agreement allows it.
+- an Ed25519 or stronger holder proof accepted by the MBA production verifier;
+- a signed capability artifact and domain attestation;
+- a concrete `MissionComplianceProgram` proof artifact;
+- the canonical `MissionRegistry` approval, escrow, nullifier, receipt, and settlement transitions;
+- a signed x402 payload settled through the relevant upstream rail;
+- durable witness storage and independent chain readback.
 
-This repository is a technical adapter demo for evaluation. Any production
-package should include explicit license files and notices approved by Vorim,
-Zeko Labs, and the owners of Santaclawz, x402, Magic City, and Agent
-Mission-Bound Auth components.
+## Magic City And SantaClawz
+
+Magic City and SantaClawz are integration contexts, not libraries needed to mint this core adapter receipt.
+
+- Use Magic City when the action originates inside a real Magic City session. Preserve its mission ID, checkpoint events, proof queue state, and anchor results.
+- Use SantaClawz when a real external agent is discovered or hired. Preserve the returned x402 plan, execution request ID, payment state, and `santaclawz-return/1.0` package.
+
+The default demo does not claim either system participated. Their names are not stamped into receipts as synthetic provenance.
+
+## Licensing
+
+The upstream submodules retain their own licensing and copyright history. Agent Mission-Bound Auth and Zeko x402 currently declare BUSL-1.1. This repository does not relicense those components under Apache-2.0 or any other blanket license.

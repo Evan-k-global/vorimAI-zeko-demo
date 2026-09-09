@@ -8,6 +8,7 @@ import {
   UInt32,
   UInt64
 } from "o1js";
+import { type X402PaymentPayload } from "zeko-x402";
 
 import {
   EMPTY_MAP_ROOT,
@@ -46,7 +47,9 @@ export type VorimZekoDemoResult = {
   effectiveIntentHash: string;
   effectivePayload: Record<string, unknown>;
   receipt: AuthorizeZekoActionResult["receipt"];
+  vorimBinding: AuthorizeZekoActionResult["vorimBinding"];
   receiptCanonicalJson: string;
+  x402Payment: X402PaymentPayload;
   simulatedTxHash: string;
   auditEvents: MockVorimAuditEvent[];
   timeline: Array<{ label: string; detail: string }>;
@@ -98,7 +101,7 @@ export async function runVorimZekoDemo({
       agentId: "agid_vorim_demo_agent_001",
       agentDid: "did:vorim:agent:demo-001",
       agentPublicKeyFingerprint: "fp_demo_agent_key",
-      runtimeId: "magic-city-compatible-local",
+      runtimeId: "vorim-local-adapter",
       scopes: ["agent:execute", "agent:transact"],
       issuedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 3600_000).toISOString()
@@ -139,22 +142,35 @@ export async function runVorimZekoDemo({
 
   const actionPayload = {
     action: "purchase_compute_credit",
-    amountNanomina: 100_000_000,
+    amountNativeUnits: 100_000_000,
     marketplace: "vorim-demo-marketplace",
     memo: "user supplied payment memo"
   };
+  const x402PaymentTemplate = {
+    requestId: `x402req-vorim-${scenario}`,
+    paymentId: `x402pay-vorim-${scenario}`,
+    settlementRail: "zeko",
+    networkId: "zeko:sepolia",
+    asset: { symbol: "sETH", decimals: 9, standard: "native" },
+    payer: agent.key.toPublicKey().toBase58(),
+    payTo: delegate.key.toPublicKey().toBase58(),
+    sessionId: `vorim-demo-${scenario}`,
+    maxSpendUsd: "1.00",
+    idempotencyKey: `vorim-demo-${scenario}-0001`
+  } as const;
   const authorization = await authorizeZekoAction(vorim, {
     agentId: "agid_vorim_demo_agent_001",
-    network: "zeko:testnet",
+    protocolNetworkId: "zeko:sepolia",
     zkappAddress: zkapp.address.toBase58(),
     method: "settleMission",
     payload: actionPayload,
+    payment: x402PaymentTemplate,
     requiredScope: "agent:transact",
     idempotencyKey: `demo:${scenario}`
   });
   timeline.push({
     label: "Vorim runtime decision",
-    detail: `${authorization.receipt.verdict} ${authorization.decisionId}`
+    detail: `${authorization.vorimBinding.verdict} ${authorization.decisionId}`
   });
 
   const missionRegistry = new MerkleMap();
@@ -165,8 +181,8 @@ export async function runVorimZekoDemo({
     actionHash: authorization.receiptCommitment,
     settlementRecipient: agent.key.toPublicKey(),
     maxAmount: UInt64.from(
-      typeof authorization.effectivePayload.amountNanomina === "number"
-        ? authorization.effectivePayload.amountNanomina
+      typeof authorization.effectivePayload.amountNativeUnits === "number"
+        ? authorization.effectivePayload.amountNativeUnits
         : 100_000_000
     ),
     expiresAtSlot: UInt32.from(90_000),
@@ -205,7 +221,7 @@ export async function runVorimZekoDemo({
   timeline.push({ label: "Mission settled", detail: simulatedTxHash });
 
   await recordZekoSettlement(vorim, {
-    agentId: authorization.receipt.agentId,
+    agentId: authorization.vorimBinding.agentId,
     decisionId: authorization.decisionId,
     receiptCommitment: authorization.receiptCommitmentDecimal,
     observedReceiptCommitment: authorization.receiptCommitmentDecimal,
@@ -236,7 +252,9 @@ export async function runVorimZekoDemo({
     effectiveIntentHash: authorization.effectiveIntentHash,
     effectivePayload: authorization.effectivePayload,
     receipt: authorization.receipt,
+    vorimBinding: authorization.vorimBinding,
     receiptCanonicalJson: authorization.receiptCanonicalJson,
+    x402Payment: authorization.payment,
     simulatedTxHash,
     auditEvents: vorim.auditEvents,
     timeline

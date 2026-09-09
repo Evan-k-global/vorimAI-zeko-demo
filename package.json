@@ -6,18 +6,24 @@
   "description": "VorimAI agent identity, scoped permission, and signed-audit demo for Zeko.",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "build:upstream-mba": "npm --prefix vendor/agent-mission-bound-auth run zkapp:build",
     "demo": "npm run build && node build/scripts/demo-local.js",
     "demo:vorim": "npm run build && node build/scripts/demo-vorim-zeko.js",
     "app": "npm run build && node build/scripts/demo-app-server.js",
     "doctor": "npm run build && node build/scripts/doctor.js",
     "test": "npm run build && node --test build/test/vorim-agent-trust-registry.test.js build/test/vorim-zeko-adapter.test.js",
-    "deploy:zeko": "npm run build && node build/scripts/deploy-zeko.js",
-    "smoke:zeko": "npm run build && node build/scripts/smoke-zeko.js"
+    "test:upstream-mba": "npm --prefix vendor/agent-mission-bound-auth run test:zkapp-trustless",
+    "deploy:zeko": "npm --prefix vendor/agent-mission-bound-auth run zkapp:deploy",
+    "smoke:zeko": "npm --prefix vendor/agent-mission-bound-auth run smoke:live-approval-anchor",
+    "deploy:adapter-demo": "npm run build && node build/scripts/deploy-zeko.js",
+    "smoke:adapter-demo": "npm run build && node build/scripts/smoke-zeko.js"
   },
   "dependencies": {
+    "agent-mission-bound-auth": "https://github.com/Evan-k-global/agent-mission-bound-auth/archive/1295b9b725974a7f15046fc503d79eac28b49744.tar.gz",
     "dotenv": "^16.4.7",
-    "o1js": "2.13.0",
-    "reflect-metadata": "^0.2.2"
+    "o1js": "2.14.0",
+    "reflect-metadata": "^0.2.2",
+    "zeko-x402": "https://github.com/zeko-labs/x402-zeko/archive/f7d4ea765e9fc0a55e38fd93d3d9f55313ece1da.tar.gz"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
