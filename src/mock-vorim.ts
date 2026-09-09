@@ -26,7 +26,7 @@ export class MockVorimClient implements VorimRuntimeClient {
 
   constructor(
     readonly scenario: MockVorimScenario = "allow",
-    private readonly now = new Date("2026-08-21T12:00:00.000Z")
+    private readonly now = new Date()
   ) {}
 
   async beforeAction(

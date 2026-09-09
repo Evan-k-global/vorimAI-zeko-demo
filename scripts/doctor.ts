@@ -1,9 +1,11 @@
 import "dotenv/config";
 
-import { Mina, PrivateKey, fetchAccount } from "o1js";
+import { Mina, PrivateKey, fetchAccount, type NetworkId } from "o1js";
 
 const zekoGraphql = process.env.ZEKO_GRAPHQL_URL ?? "https://testnet.zeko.io/graphql";
 const zekoArchive = process.env.ZEKO_ARCHIVE_URL ?? "https://archive.testnet.zeko.io/graphql";
+// Zeko custom-network strings are runtime-supported; this o1js build narrows the TS type.
+const zekoO1jsNetworkId = (process.env.ZEKO_O1JS_NETWORK_ID ?? "zeko") as NetworkId;
 
 const required = [
   "VORIM_CLIENT_ID",
@@ -23,7 +25,7 @@ Mina.setActiveInstance(
   Mina.Network({
     mina: zekoGraphql,
     archive: zekoArchive,
-    networkId: "testnet"
+    networkId: zekoO1jsNetworkId
   })
 );
 

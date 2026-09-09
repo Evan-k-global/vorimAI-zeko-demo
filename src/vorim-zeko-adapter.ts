@@ -37,12 +37,68 @@ export type VorimRuntimeClient = {
 
 export interface VorimZekoAuthorizationReceipt {
   schema: "mission-bound-auth-receipt-v1";
-  bundleVersion: "zk-mission-bundle-v1";
-  registryVersion: "mba-registry-v1";
-  integrationProfile: "vorim-zeko-demo-adapter";
-  appRuntime: "magic-city-compatible";
-  agentRail: "santaclawz";
-  paymentRail: "x402";
+  receiptId: string;
+  receiptHash: string;
+  mission: {
+    protocol: "mission-bound-agent-auth-v1";
+    missionIdHash: string;
+    capabilityHash: string;
+    issuer: string;
+    audience: string;
+    resource: string;
+    actionHash: string;
+  };
+  policy: {
+    policyHash: string;
+    allowedActionsHash: string;
+    paymentRailsHash: string;
+    decisionId: string;
+    verdict: "allow" | "modify";
+    requiredScope: string;
+    policyVersion: number;
+    expiresAt: string;
+  };
+  holder: {
+    agentId: string;
+    keyThumbprint: string;
+    proofScheme: "digest-holder-proof-v1";
+    alg: "Ed25519" | "P-256";
+  };
+  trace: {
+    boundaryEventVersion: "mission-bound-boundary-event-v1";
+    eventCount: number;
+    traceHash: string;
+    latestEventHash: string;
+    originalIntentHash: string;
+    effectiveIntentHash: string;
+  };
+  payment: {
+    rail: "x402";
+    networkId: string;
+    amountCommitment: string;
+    paymentCommitment: string;
+    paymentContextDigest: string;
+  };
+  proof: {
+    registryVersion: "mba-registry-v1";
+    statementKind: "mission-bound-trace-compliance-v1";
+    statementHash: string;
+    proofSystem: "signed-commitment-transition";
+    verificationKeyHash: string | null;
+    networkId: string;
+    zkappAddress: string;
+  };
+  nullifier: string;
+  registryRoot: string | null;
+  settlementState: "receipt_created";
+  anchor: null;
+  exportedAt: string;
+  adapter: {
+    bundleVersion: "zk-mission-bundle-v1";
+    integrationProfile: "vorim-zeko-demo-adapter";
+    appRuntime: "magic-city-compatible";
+    agentRail: "santaclawz";
+  };
   agentId: string;
   decisionId: string;
   verdict: "allow" | "modify";
@@ -87,21 +143,19 @@ export function receiptPoseidonCommitment(receipt: VorimZekoAuthorizationReceipt
   return Poseidon.hash([
     RECEIPT_NAMESPACE,
     fieldFromString(receipt.schema),
-    fieldFromString(receipt.bundleVersion),
-    fieldFromString(receipt.registryVersion),
-    fieldFromString(receipt.integrationProfile),
-    fieldFromString(receipt.appRuntime),
-    fieldFromString(receipt.agentRail),
-    fieldFromString(receipt.paymentRail),
-    fieldFromString(receipt.agentId),
-    fieldFromString(receipt.decisionId),
-    fieldFromString(receipt.verdict),
-    fieldFromString(receipt.requiredScope),
-    fieldFromString(receipt.resource),
-    fieldFromString(receipt.originalIntentHash),
-    fieldFromString(receipt.effectiveIntentHash),
-    fieldFromString(receipt.expiresAt),
-    Field(receipt.policyVersion),
+    fieldFromString(receipt.receiptId),
+    fieldFromString(receipt.receiptHash),
+    fieldFromString(receipt.mission.missionIdHash),
+    fieldFromString(receipt.mission.capabilityHash),
+    fieldFromString(receipt.policy.policyHash),
+    fieldFromString(receipt.holder.keyThumbprint),
+    fieldFromString(receipt.trace.traceHash),
+    fieldFromString(receipt.trace.latestEventHash),
+    fieldFromString(receipt.payment.paymentContextDigest),
+    fieldFromString(receipt.payment.paymentCommitment),
+    fieldFromString(receipt.proof.statementHash),
+    fieldFromString(receipt.nullifier),
+    fieldFromString(receipt.settlementState),
     fieldFromString(receipt.alg)
   ]);
 }
@@ -150,6 +204,17 @@ function approvedPayloadForDecision(
   return { verdict: "allow", payload: originalPayload, alg: wasEscalated ? "P-256" : "Ed25519" };
 }
 
+function receiptIdFor(body: Omit<VorimZekoAuthorizationReceipt, "receiptId" | "receiptHash">): string {
+  const {
+    anchor: _anchor,
+    exportedAt: _exportedAt,
+    registryRoot: _registryRoot,
+    settlementState: _settlementState,
+    ...identityBody
+  } = body;
+  return `receipt_${sha256Hex(canonicalJson(identityBody)).slice(0, 24)}`;
+}
+
 export async function authorizeZekoAction(
   vorim: VorimRuntimeClient,
   input: AuthorizeZekoActionInput
@@ -178,15 +243,131 @@ export async function authorizeZekoAction(
     initialDecision.decision === "escalate"
   );
   const effectiveIntentHash = hashIntent(approved.payload);
+  const exportedAt = new Date().toISOString();
+  const missionIdHash = hashIntent({
+    protocol: "mission-bound-agent-auth-v1",
+    agentId: input.agentId,
+    decisionId: decision.decisionId,
+    resource
+  });
+  const capabilityHash = hashIntent({
+    version: "mission-bound-capability-v1",
+    agentId: input.agentId,
+    allowedActions: [input.method],
+    paymentRails: ["x402"],
+    resource,
+    scopes: [requiredScope]
+  });
+  const policyHash = hashIntent({
+    decisionId: decision.decisionId,
+    expiresAt: decision.expiresAt,
+    policyVersion: decision.policyVersion,
+    requiredScope,
+    verdict: approved.verdict
+  });
+  const allowedActionsHash = hashIntent({ actions: [input.method], resource });
+  const paymentRailsHash = hashIntent({ paymentRails: ["x402"] });
+  const amountCommitment = hashIntent({
+    amountNanomina:
+      typeof approved.payload.amountNanomina === "number"
+        ? approved.payload.amountNanomina
+        : null
+  });
+  const paymentContextDigest = hashIntent({
+    protocol: "x402",
+    version: "2",
+    networkId: input.network,
+    rail: "x402",
+    resource,
+    amountCommitment
+  });
+  const paymentCommitment = hashIntent({ paymentContextDigest, rail: "x402" });
+  const latestEventHash = hashIntent({
+    version: "mission-bound-boundary-event-v1",
+    decisionId: decision.decisionId,
+    effectiveIntentHash,
+    event: "vorim.beforeAction",
+    originalIntentHash,
+    verdict: approved.verdict
+  });
+  const traceHash = hashIntent({ eventCount: 1, latestEventHash });
+  const statementHash = hashIntent({
+    capabilityHash,
+    effectiveIntentHash,
+    originalIntentHash,
+    paymentContextDigest,
+    policyHash
+  });
 
-  const receipt: VorimZekoAuthorizationReceipt = {
+  const receiptBody: Omit<VorimZekoAuthorizationReceipt, "receiptId" | "receiptHash"> = {
     schema: "mission-bound-auth-receipt-v1",
-    bundleVersion: "zk-mission-bundle-v1",
-    registryVersion: "mba-registry-v1",
-    integrationProfile: "vorim-zeko-demo-adapter",
-    appRuntime: "magic-city-compatible",
-    agentRail: "santaclawz",
-    paymentRail: "x402",
+    mission: {
+      protocol: "mission-bound-agent-auth-v1",
+      missionIdHash,
+      capabilityHash,
+      issuer: "https://api.vorim.ai",
+      audience: "vorim-zeko-demo",
+      resource,
+      actionHash: effectiveIntentHash
+    },
+    policy: {
+      policyHash,
+      allowedActionsHash,
+      paymentRailsHash,
+      decisionId: decision.decisionId,
+      verdict: approved.verdict,
+      requiredScope,
+      policyVersion: decision.policyVersion,
+      expiresAt: decision.expiresAt
+    },
+    holder: {
+      agentId: input.agentId,
+      keyThumbprint: hashIntent({
+        agentId: input.agentId,
+        signer: approved.alg === "P-256" ? "human-secure-element" : "agent-runtime-key"
+      }),
+      proofScheme: "digest-holder-proof-v1",
+      alg: approved.alg
+    },
+    trace: {
+      boundaryEventVersion: "mission-bound-boundary-event-v1",
+      eventCount: 1,
+      traceHash,
+      latestEventHash,
+      originalIntentHash,
+      effectiveIntentHash
+    },
+    payment: {
+      rail: "x402",
+      networkId: input.network,
+      amountCommitment,
+      paymentCommitment,
+      paymentContextDigest
+    },
+    proof: {
+      registryVersion: "mba-registry-v1",
+      statementKind: "mission-bound-trace-compliance-v1",
+      statementHash,
+      proofSystem: "signed-commitment-transition",
+      verificationKeyHash: null,
+      networkId: input.network,
+      zkappAddress: input.zkappAddress
+    },
+    nullifier: hashIntent({
+      agentId: input.agentId,
+      decisionId: decision.decisionId,
+      resource
+    }),
+    registryRoot: null,
+    settlementState: "receipt_created",
+    anchor: null,
+    exportedAt,
+    adapter: {
+      bundleVersion: "zk-mission-bundle-v1",
+      integrationProfile: "vorim-zeko-demo-adapter",
+      appRuntime: "magic-city-compatible",
+      agentRail: "santaclawz"
+    },
     agentId: input.agentId,
     decisionId: decision.decisionId,
     verdict: approved.verdict,
@@ -197,6 +378,11 @@ export async function authorizeZekoAction(
     expiresAt: decision.expiresAt,
     policyVersion: decision.policyVersion,
     alg: approved.alg
+  };
+  const receipt: VorimZekoAuthorizationReceipt = {
+    ...receiptBody,
+    receiptId: receiptIdFor(receiptBody),
+    receiptHash: sha256Hex(canonicalJson(receiptBody))
   };
 
   const receiptCanonicalJson = canonicalJson(receipt);
@@ -219,8 +405,11 @@ export async function authorizeZekoAction(
         zkapp_address: input.zkappAddress,
         receipt_commitment: receiptCommitmentDecimal,
         receipt_commitment_hex: receiptCommitmentHex,
+        receipt_hash: receipt.receiptHash,
+        receipt_id: receipt.receiptId,
         original_intent_hash: originalIntentHash,
         effective_payload: approved.payload,
+        x402_payment_context_digest: receipt.payment.paymentContextDigest,
         policy_modified: approved.verdict === "modify"
       }
     },

@@ -9,7 +9,8 @@ import {
   Signature,
   UInt32,
   UInt64,
-  fetchAccount
+  fetchAccount,
+  type NetworkId
 } from "o1js";
 
 import {
@@ -26,6 +27,8 @@ const archiveUrl = process.env.ZEKO_ARCHIVE_URL ?? "https://archive.testnet.zeko
 const address = process.env.ZEKO_ZKAPP_ADDRESS;
 const deployerPrivateKey = process.env.ZEKO_DEPLOYER_PRIVATE_KEY;
 const issuerPrivateKey = process.env.VORIM_ISSUER_PRIVATE_KEY;
+// Zeko custom-network strings are runtime-supported; this o1js build narrows the TS type.
+const zekoO1jsNetworkId = (process.env.ZEKO_O1JS_NETWORK_ID ?? "zeko") as NetworkId;
 
 if (!address || !deployerPrivateKey || !issuerPrivateKey) {
   throw new Error(
@@ -34,7 +37,11 @@ if (!address || !deployerPrivateKey || !issuerPrivateKey) {
 }
 
 Mina.setActiveInstance(
-  Mina.Network({ mina: graphQlUrl, archive: archiveUrl, networkId: "testnet" })
+  Mina.Network({
+    mina: graphQlUrl,
+    archive: archiveUrl,
+    networkId: zekoO1jsNetworkId
+  })
 );
 
 const deployer = PrivateKey.fromBase58(deployerPrivateKey);

@@ -6,7 +6,7 @@ The flow is:
 
 1. Vorim identifies the agent and evaluates a scoped runtime decision.
 2. The adapter fails closed on unreachable policy, applies policy-modified payloads, and resolves escalations before settlement.
-3. A `mission-bound-auth-receipt-v1` profile is Poseidon-committed as an o1js `Field`.
+3. A schema-shaped `mission-bound-auth-receipt-v1` receipt is Poseidon-committed as an o1js `Field`.
 4. The Zeko zkApp anchors the agent credential commitment and authorizes a one-time mission bound to that receipt commitment.
 5. Settlement emits the same commitment so Vorim signed audit records reconcile with Zeko state.
 
@@ -32,7 +32,7 @@ This repo is a working v1 adapter demo. It ships:
 - a Vorim runtime adapter based on the corrected TypeScript file from Vorim;
 - fail-closed handling for `fallback`, resolved handling for `escalate`, and effective-payload handling for `modify`;
 - Poseidon/o1js `Field` receipt commitments, not placeholder SHA strings;
-- `mission-bound-auth-receipt-v1`, `zk-mission-bundle-v1`, and `mba-registry-v1` naming so the demo aligns to the existing Agent Mission-Bound Auth vocabulary;
+- a `mission-bound-auth-receipt-v1` object with the canonical receipt sections: `receiptId`, `receiptHash`, `mission`, `policy`, `holder`, `trace`, `payment`, `proof`, `nullifier`, and `settlementState`;
 - a local browser/CLI demo showing Vorim decision -> receipt commitment -> Zeko mission authorization -> settlement audit.
 
 This v1 is intentionally narrow. It proves the adapter shape and the reconciliation loop. It does not replace the production Mission-Bound Auth sidecar, x402 payment contracts/facilitator flow, Magic City orchestration runtime, or Santaclawz agent network.
@@ -134,12 +134,13 @@ PROOFS_ENABLED=true npm run demo:vorim -- allow
 
 ## Runtime Authorization Receipt
 
-The demo builds a `mission-bound-auth-receipt-v1` profile after Vorim returns an executable decision:
+The demo builds a schema-shaped `mission-bound-auth-receipt-v1` receipt after Vorim returns an executable decision:
 
 - `fallback` never settles; the adapter throws before a mission is authorized.
 - `modify` hashes and settles Vorim's `modifiedPayload`, while retaining the original intent hash for audit reconciliation.
 - `escalate` must resolve through `waitForDecisionResolution`; the resolved receipt records `alg: "P-256"` to preserve the manual approval signer boundary.
 - ordinary agent decisions record `alg: "Ed25519"`.
+- the receipt includes Mission-Bound Auth sections for `mission`, `policy`, `holder`, `trace`, `payment`, and `proof`, and keeps x402 as a payment context digest rather than pretending to run a payment settlement.
 
 The receipt commitment is a real o1js `Field` from `Poseidon.hash(...)`. In the local demo that field is bound into `VorimMissionAuthorization.actionHash` and emitted as the settlement `resultHash`, so the signed Vorim audit trail reconciles against Zeko mission and settlement state.
 
@@ -155,6 +156,12 @@ Default endpoints:
 
 - `https://testnet.zeko.io/graphql`
 - `https://archive.testnet.zeko.io/graphql`
+
+Default o1js signing network:
+
+- `ZEKO_O1JS_NETWORK_ID=zeko`
+
+If you are testing against the newer `zeko-x402` Zeko Ethereum Sepolia rail, follow that repo's current deployment guide and override the graph, archive, and o1js signing-domain values together. This demo's x402 field is a receipt/payment-context commitment; x402 exact settlement and reserve-release belong in `zeko-x402`.
 
 For live smoke tests:
 

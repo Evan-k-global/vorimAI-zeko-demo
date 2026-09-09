@@ -30,6 +30,19 @@ describe("vorim zeko adapter", () => {
 
     assert.equal(result.receipt.verdict, "allow");
     assert.equal(result.receipt.alg, "Ed25519");
+    assert.equal(result.receipt.schema, "mission-bound-auth-receipt-v1");
+    assert.match(result.receipt.receiptId, /^receipt_[a-f0-9]{24}$/);
+    assert.equal(typeof result.receipt.receiptHash, "string");
+    assert.equal(result.receipt.mission.protocol, "mission-bound-agent-auth-v1");
+    assert.equal(result.receipt.policy.decisionId, result.decisionId);
+    assert.equal(result.receipt.holder.alg, "Ed25519");
+    assert.equal(result.receipt.holder.proofScheme, "digest-holder-proof-v1");
+    assert.equal(result.receipt.trace.boundaryEventVersion, "mission-bound-boundary-event-v1");
+    assert.equal(result.receipt.payment.rail, "x402");
+    assert.equal(result.receipt.proof.registryVersion, "mba-registry-v1");
+    assert.equal(result.receipt.proof.statementKind, "mission-bound-trace-compliance-v1");
+    assert.equal(result.receipt.proof.proofSystem, "signed-commitment-transition");
+    assert.equal(result.receipt.adapter.bundleVersion, "zk-mission-bundle-v1");
     assert.equal(result.effectiveIntentHash, hashIntent(baseInput.payload));
     assert.ok(result.receiptCommitment instanceof Field);
     assert.equal(vorim.auditEvents.length, 1);
@@ -52,6 +65,7 @@ describe("vorim zeko adapter", () => {
 
     assert.equal(result.receipt.verdict, "allow");
     assert.equal(result.receipt.alg, "P-256");
+    assert.equal(result.receipt.holder.alg, "P-256");
     assert.equal(vorim.auditEvents.length, 1);
   });
 

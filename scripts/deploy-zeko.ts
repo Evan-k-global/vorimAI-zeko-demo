@@ -1,12 +1,14 @@
 import "dotenv/config";
 
-import { AccountUpdate, fetchAccount, Mina, PrivateKey } from "o1js";
+import { AccountUpdate, fetchAccount, Mina, PrivateKey, type NetworkId } from "o1js";
 
 import { VorimAgentTrustRegistry } from "../src/index.js";
 
 const deployerPrivateKey = process.env.ZEKO_DEPLOYER_PRIVATE_KEY;
 const zkappPrivateKey = process.env.ZEKO_ZKAPP_PRIVATE_KEY;
 const issuerPrivateKey = process.env.VORIM_ISSUER_PRIVATE_KEY;
+// Zeko custom-network strings are runtime-supported; this o1js build narrows the TS type.
+const zekoO1jsNetworkId = (process.env.ZEKO_O1JS_NETWORK_ID ?? "zeko") as NetworkId;
 
 if (!deployerPrivateKey || !zkappPrivateKey || !issuerPrivateKey) {
   throw new Error(
@@ -17,7 +19,7 @@ if (!deployerPrivateKey || !zkappPrivateKey || !issuerPrivateKey) {
 const network = Mina.Network({
   mina: process.env.ZEKO_GRAPHQL_URL ?? "https://testnet.zeko.io/graphql",
   archive: process.env.ZEKO_ARCHIVE_URL ?? "https://archive.testnet.zeko.io/graphql",
-  networkId: "testnet"
+  networkId: zekoO1jsNetworkId
 });
 Mina.setActiveInstance(network);
 

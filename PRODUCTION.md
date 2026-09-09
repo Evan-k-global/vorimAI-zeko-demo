@@ -25,7 +25,9 @@ Do not commit `.env` files, private keys, raw regulated payloads, customer ident
 
 This repository is not a new protocol and should not represent Agent Mission-Bound Auth, x402, Magic City, or Santaclawz as Vorim-authored or Apache-licensed.
 
-The adapter uses the existing Mission-Bound Auth names `zk-mission-bundle-v1`, `mission-bound-auth-receipt-v1`, and `mba-registry-v1`; records x402 as the payment rail; records Santaclawz as the agent rail; and treats Magic City as the compatible runtime/orchestration pattern.
+The adapter uses the existing Mission-Bound Auth names `zk-mission-bundle-v1`, `mission-bound-auth-receipt-v1`, and `mba-registry-v1`; emits the canonical receipt sections; records x402 as a payment context rail; records Santaclawz as the agent rail; and treats Magic City as the compatible runtime/orchestration pattern.
+
+The live Zeko scripts default to public Zeko testnet endpoints and `ZEKO_O1JS_NETWORK_ID=zeko`. If a deployment uses the newer `zeko-x402` Zeko Ethereum Sepolia rail, keep the x402 settlement/facilitator implementation in `zeko-x402` and pass only the resulting payment context digest into this adapter.
 
 ## Production Work
 

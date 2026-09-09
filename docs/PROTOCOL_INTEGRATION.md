@@ -8,10 +8,12 @@ protocol.
 
 - Agent Mission-Bound Auth: portable mission, approval, checkpoint, receipt,
   and Zeko registry vocabulary. This repo uses the canonical names
-  `zk-mission-bundle-v1`, `mission-bound-auth-receipt-v1`, and `mba-registry-v1`.
+  `zk-mission-bundle-v1`, `mission-bound-auth-receipt-v1`, and `mba-registry-v1`,
+  and emits a receipt object with the canonical receipt sections.
 - x402 on Zeko: payment rail metadata and paid-work reconciliation surface.
-  This demo marks the settlement intent as `paymentRail: "x402"` and keeps
-  payment release as an external rail concern.
+  This demo records `payment.rail: "x402"` plus a payment context digest and
+  keeps exact settlement, reserve/release, and facilitator behavior as external
+  `zeko-x402` concerns.
 - Magic City: product/runtime orchestration model for sessions, approvals,
   checkpoints, proof queues, and Zeko anchoring. The demo is
   `magic-city-compatible`; it is not Magic City itself.
@@ -27,9 +29,23 @@ Vorim contributes the runtime governance decision:
 2. fail closed on `fallback` or unresolved `escalate`;
 3. apply `modifiedPayload` when policy returns `modify`;
 4. commit the approved effective intent into a
-   `mission-bound-auth-receipt-v1` profile;
+   schema-shaped `mission-bound-auth-receipt-v1` receipt;
 5. bind that receipt commitment into the Zeko mission authorization and signed
    audit events.
+
+## Current Chain Split
+
+This zkApp demo defaults to Zeko testnet endpoints:
+
+- `https://testnet.zeko.io/graphql`
+- `https://archive.testnet.zeko.io/graphql`
+- `ZEKO_O1JS_NETWORK_ID=zeko`
+
+The newer `zeko-x402` Zeko-native payment rail is documented separately as
+Zeko Ethereum Sepolia (`X402_ZEKO_NETWORK=zeko:sepolia`) with its own graph
+endpoint and signing-domain settings. Keep those payment rails in `zeko-x402`
+and pass their resulting payment context into this adapter receipt instead of
+rebuilding the rail here.
 
 The adapter does not replace the canonical Mission-Bound Auth sidecar,
 checkpoint API, bundle verifier, x402 rail implementation, Magic City
