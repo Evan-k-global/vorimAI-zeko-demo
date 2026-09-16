@@ -10,3 +10,5 @@ npm run poc:kent-ai:app
 ```
 
 Open `http://127.0.0.1:4175` after starting the app. This is a local POC deployment using the repository's `MockVorimClient`, unsigned x402 context, and local adapter zkApp; it does not execute a vendor payment or move funds.
+
+To connect a real Vorim API, database, and branded frontend, follow the shared [turnkey handoff](../../docs/VORIM_TURNKEY_HANDOFF.md).

@@ -10,3 +10,5 @@ npm run poc:finfindr:app
 ```
 
 Open `http://127.0.0.1:4174` after starting the app. This is a local POC deployment using the repository's `MockVorimClient`, unsigned x402 context, and local adapter zkApp; it does not execute a customer remediation or move funds.
+
+To connect a real Vorim API, database, and branded frontend, follow the shared [turnkey handoff](../../docs/VORIM_TURNKEY_HANDOFF.md).

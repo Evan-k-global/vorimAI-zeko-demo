@@ -69,7 +69,7 @@ export async function runCustomerPoc(
       verdict: result.vorimBinding.verdict,
       policyVersion: result.vorimBinding.policyVersion,
       approvalAlgorithm: result.vorimBinding.approvalAlg,
-      signedActionRecords: result.auditEvents.length
+      signedActionRecords: result.emittedAuditRecords
     },
     privacy: {
       rawPayloadPublishedToZeko: false,

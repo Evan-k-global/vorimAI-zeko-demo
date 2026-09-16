@@ -1,6 +1,11 @@
 const buttons = [...document.querySelectorAll(".scenario")];
 const runButton = document.querySelector("#run");
 const status = document.querySelector("#status");
+const brandName = document.querySelector("#brand-name");
+const brandLink = document.querySelector("#brand-link");
+const scenarioControl = document.querySelector("#scenario-control");
+const runtimeNote = document.querySelector("#runtime-note");
+const boundary = document.querySelector("#poc-boundary");
 let selectedScenario = "escalate";
 
 const fields = {
@@ -43,6 +48,20 @@ function render(result) {
   fields.amount.textContent = `${result.x402.amountNativeUnits} ${result.x402.asset}`;
 }
 
+async function loadConfig() {
+  const response = await fetch("/api/config");
+  if (!response.ok) return;
+  const config = await response.json();
+  brandName.textContent = config.brand.name;
+  if (config.brand.homeUrl) brandLink.href = config.brand.homeUrl;
+  document.title = `Kent HOA x ${config.brand.name} x Zeko`;
+  if (config.runtimeMode === "vorim-sdk") {
+    scenarioControl.hidden = true;
+    runtimeNote.textContent = "Live Vorim SDK mode: the runtime returns the decision; this interface does not simulate a verdict.";
+    boundary.innerHTML = "<strong>Integration mode:</strong> Vorim's SDK supplies the runtime decision and signed records. This POC still uses the local adapter zkApp until the production MissionRegistry settlement path is configured.";
+  }
+}
+
 buttons.forEach((button) => {
   button.addEventListener("click", () => {
     selectedScenario = button.dataset.scenario;
@@ -70,3 +89,5 @@ runButton.addEventListener("click", async () => {
     runButton.disabled = false;
   }
 });
+
+loadConfig().catch(() => {});

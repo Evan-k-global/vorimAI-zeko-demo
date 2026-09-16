@@ -23,7 +23,8 @@ import { MockVorimClient, type MockVorimAuditEvent, type MockVorimScenario } fro
 import {
   authorizeZekoAction,
   recordZekoSettlement,
-  type AuthorizeZekoActionResult
+  type AuthorizeZekoActionResult,
+  type VorimRuntimeClient
 } from "./vorim-zeko-adapter.js";
 
 export type VorimZekoDemoResult = {
@@ -52,6 +53,7 @@ export type VorimZekoDemoResult = {
   x402Payment: X402PaymentPayload;
   simulatedTxHash: string;
   auditEvents: MockVorimAuditEvent[];
+  emittedAuditRecords: number;
   timeline: Array<{ label: string; detail: string }>;
 };
 
@@ -59,6 +61,7 @@ export type RunVorimZekoDemoOptions = {
   scenario?: MockVorimScenario;
   proofsEnabled?: boolean;
   profile?: VorimZekoDemoProfile;
+  vorim?: VorimRuntimeClient;
 };
 
 export type VorimZekoDemoProfile = {
@@ -97,9 +100,10 @@ const defaultProfile: VorimZekoDemoProfile = {
 export async function runVorimZekoDemo({
   scenario = "allow",
   proofsEnabled = false,
-  profile = defaultProfile
+  profile = defaultProfile,
+  vorim: suppliedVorim
 }: RunVorimZekoDemoOptions = {}): Promise<VorimZekoDemoResult> {
-  const vorim = new MockVorimClient(scenario);
+  const vorim = suppliedVorim ?? new MockVorimClient(scenario);
   const local = await Mina.LocalBlockchain({ proofsEnabled });
   Mina.setActiveInstance(local);
 
@@ -286,7 +290,8 @@ export async function runVorimZekoDemo({
     receiptCanonicalJson: authorization.receiptCanonicalJson,
     x402Payment: authorization.payment,
     simulatedTxHash,
-    auditEvents: vorim.auditEvents,
+    auditEvents: vorim instanceof MockVorimClient ? vorim.auditEvents : [],
+    emittedAuditRecords: 2,
     timeline
   };
 }

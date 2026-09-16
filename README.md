@@ -23,6 +23,10 @@ The FinFindr app serves at `http://127.0.0.1:4174`; Kent HOA serves at `http://1
 
 The payload digests use RFC 8785 JCS, matching the canonical bytes the supplied Vorim SDK reference identifies for signing. In a production Vorim integration, call the SDK's `jcsCanonicalise` directly when hashing the Vorim request and exported signed action record.
 
+## Vorim Turnkey Handoff
+
+The POCs are ready for Vorim to put behind its own frontend and connect to its existing runtime/API and database. See [the implementation handoff](docs/VORIM_TURNKEY_HANDOFF.md) for the exact environment variables, SDK boundary, frontend endpoints, and record-store interface. The default remains a safe local demo; `POC_RUNTIME_MODE=vorim-sdk` switches the server to Vorim's real SDK client without altering the MBA, x402, or Zeko commitment flow.
+
 ## What Vorim Gets From Zeko
 
 Vorim already supplies the identity, policy decision, and signed audit record. Zeko adds an independently observable proof and settlement surface for customers who need evidence outside a vendor-hosted dashboard.

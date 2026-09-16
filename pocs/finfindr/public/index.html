@@ -9,13 +9,13 @@
   <body>
     <main>
       <header>
-        <p class="eyebrow">FinFindr / Vorim / Zeko</p>
+        <p class="eyebrow">FinFindr / <a id="brand-link" href="/"><span id="brand-name">Vorim</span></a> / Zeko</p>
         <h1>Opportunity remediation evidence</h1>
         <p class="lede">A discovery agent requests a capped remediation action from private operational and capital-flow records.</p>
       </header>
 
       <section class="command" aria-label="POC controls">
-        <div>
+        <div id="scenario-control">
           <p class="eyebrow">Scenario</p>
           <div class="scenario-group" role="group" aria-label="Vorim decision scenario">
             <button class="scenario" data-scenario="allow">Allow</button>
@@ -29,7 +29,7 @@
 
       <section id="status" class="status" aria-live="polite">
         <strong>Ready</strong>
-        <span>Modify is selected: the policy cap will be applied before the payment context is formed.</span>
+        <span id="runtime-note">Modify is selected: the policy cap will be applied before the payment context is formed.</span>
       </section>
 
       <section class="grid">
@@ -67,7 +67,7 @@
         </article>
       </section>
 
-      <section class="footnote">
+      <section id="poc-boundary" class="footnote">
         <strong>POC boundary:</strong> this local deployment uses a mock Vorim client, an unsigned x402 context, and a local adapter zkApp. No customer record, remediation, or payment is executed.
       </section>
     </main>

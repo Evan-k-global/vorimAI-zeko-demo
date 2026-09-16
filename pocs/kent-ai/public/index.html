@@ -9,13 +9,13 @@
   <body>
     <main>
       <header>
-        <p class="eyebrow">Kent HOA / Vorim / Zeko</p>
+        <p class="eyebrow">Kent HOA / <a id="brand-link" href="/"><span id="brand-name">Vorim</span></a> / Zeko</p>
         <h1>Maintenance payment escalation</h1>
         <p class="lede">A maintenance agent requests a vendor payment tied to private community and work-order records. A consequential action must stop for approval.</p>
       </header>
 
       <section class="command" aria-label="POC controls">
-        <div>
+        <div id="scenario-control">
           <p class="eyebrow">Scenario</p>
           <div class="scenario-group" role="group" aria-label="Vorim decision scenario">
             <button class="scenario" data-scenario="allow">Allow</button>
@@ -29,7 +29,7 @@
 
       <section id="status" class="status" aria-live="polite">
         <strong>Ready</strong>
-        <span>Escalate is selected: the payment will not proceed without a human approval binding.</span>
+        <span id="runtime-note">Escalate is selected: the payment will not proceed without a human approval binding.</span>
       </section>
 
       <section class="grid">
@@ -67,7 +67,7 @@
         </article>
       </section>
 
-      <section class="footnote">
+      <section id="poc-boundary" class="footnote">
         <strong>POC boundary:</strong> this local deployment uses a mock Vorim client, an unsigned x402 context, and a local adapter zkApp. No HOA record, resident data, vendor payment, or funds are exposed or executed.
       </section>
     </main>

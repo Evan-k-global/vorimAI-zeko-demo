@@ -2,8 +2,11 @@ import { createServer, type IncomingMessage, type Server } from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { runCustomerPoc, type CustomerPocDefinition } from "./customer-poc.js";
+import { runCustomerPoc, type CustomerPocDefinition, type CustomerPocResult } from "./customer-poc.js";
 import { isMockVorimScenario } from "./mock-vorim.js";
+import { pocPublicConfig } from "./poc-brand.js";
+import { createPocRecordStoreFromEnv, type PocRecordStore } from "./poc-record-store.js";
+import { createPocRuntime, pocRuntimeModeFromEnv } from "./poc-runtime.js";
 
 const contentTypes: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -27,10 +30,23 @@ export function startCustomerPocServer(
   const host = options.host ?? process.env.DEMO_HOST ?? "127.0.0.1";
   const port = options.port ?? Number(process.env.DEMO_PORT ?? 4174);
   const publicDir = path.join(process.cwd(), "pocs", definition.id, "public");
+  const runtimeMode = pocRuntimeModeFromEnv();
+  const recordStore = createPocRecordStoreFromEnv();
 
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
+      if (request.method === "GET" && url.pathname === "/api/config") {
+        response.writeHead(200, { "content-type": contentTypes[".json"] });
+        response.end(JSON.stringify(pocPublicConfig(definition, runtimeMode)));
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/records") {
+        const records = (await recordStore.list()).filter((record) => record.pocId === definition.id);
+        response.writeHead(200, { "content-type": contentTypes[".json"] });
+        response.end(JSON.stringify(records));
+        return;
+      }
       if (request.method === "POST" && url.pathname === "/api/run") {
         const body = await readRequestBody(request);
         const parsed = body ? JSON.parse(body) as { scenario?: string } : {};
@@ -41,7 +57,9 @@ export function startCustomerPocServer(
           return;
         }
         try {
-          const result = await runCustomerPoc(definition, { scenario });
+          const vorim = await createPocRuntime(scenario);
+          const result = await runCustomerPoc(definition, { scenario, vorim });
+          await persistPublicRecord(recordStore, result);
           response.writeHead(200, { "content-type": contentTypes[".json"] });
           response.end(JSON.stringify(result));
         } catch (error) {
@@ -80,4 +98,20 @@ export function startCustomerPocServer(
     console.log(`${definition.title} POC: http://${host}:${port}`);
   });
   return server;
+}
+
+async function persistPublicRecord(
+  recordStore: PocRecordStore,
+  result: CustomerPocResult
+): Promise<void> {
+  await recordStore.append({
+    recordedAt: new Date().toISOString(),
+    pocId: result.poc.id,
+    decisionId: result.vorim.decisionId,
+    verdict: result.vorim.verdict,
+    originalPayloadDigest: result.privacy.originalPayloadDigest,
+    effectivePayloadDigest: result.privacy.effectivePayloadDigest,
+    receiptCommitment: result.zeko.receiptCommitment,
+    localAdapterTransaction: result.zeko.localAdapterTransaction
+  });
 }
