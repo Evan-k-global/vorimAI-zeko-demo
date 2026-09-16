@@ -15,7 +15,7 @@ export {
   type BuildAgentCredentialInput,
   type VorimAgentAssertion
 } from "./vorim-agent-identity.js";
-export { canonicalJson, fieldFromHexDigest, fieldFromObject, fieldFromString, sha256Hex } from "./hash.js";
+export { canonicalJson, fieldFromHexDigest, fieldFromObject, fieldFromString, jcsCanonicalise, sha256Hex } from "./hash.js";
 export {
   authorizeZekoAction,
   fieldToHex,
@@ -40,5 +40,11 @@ export {
 export {
   runVorimZekoDemo,
   type RunVorimZekoDemoOptions,
+  type VorimZekoDemoProfile,
   type VorimZekoDemoResult
 } from "./demo-runner.js";
+export {
+  runCustomerPoc,
+  type CustomerPocDefinition,
+  type CustomerPocResult
+} from "./customer-poc.js";

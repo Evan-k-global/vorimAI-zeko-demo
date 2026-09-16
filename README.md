@@ -10,6 +10,19 @@ The default demo flow is:
 4. The pinned `agent-mission-bound-auth` package builds and verifies the policy, capability, boundary event, trace, and `mission-bound-auth-receipt-v1` export.
 5. MBA's canonical encoder converts the receipt into an o1js `Field`, and the local adapter zkApp commits that field for reconciliation with Vorim's signed audit events.
 
+## Customer POC Deployments
+
+Two runnable local POC deployments apply the same Vorim, Mission-Bound Auth, x402, and Zeko building blocks to the public Vorim case studies. They use representative private-record references only; no customer record payload is written to Zeko or returned by the browser/API surface.
+
+| POC | Customer workflow | Default path | Run |
+| --- | --- | --- | --- |
+| [FinFindr](pocs/finfindr/README.md) | An opportunity agent proposes a capped remediation after analyzing operational and capital-flow records. | `modify`: policy reduces the proposed cap before x402 context is built. | `npm run poc:finfindr` / `npm run poc:finfindr:app` |
+| [Kent HOA](pocs/kent-ai/README.md) | A maintenance agent requests a consequential vendor payment against community and work-order records. | `escalate`: a human approval binding must resolve before settlement. | `npm run poc:kent-ai` / `npm run poc:kent-ai:app` |
+
+The FinFindr app serves at `http://127.0.0.1:4174`; Kent HOA serves at `http://127.0.0.1:4175`. They are launchable local POC deployments, not live customer systems or production Zeko settlement releases.
+
+The payload digests use RFC 8785 JCS, matching the canonical bytes the supplied Vorim SDK reference identifies for signing. In a production Vorim integration, call the SDK's `jcsCanonicalise` directly when hashing the Vorim request and exported signed action record.
+
 ## What Vorim Gets From Zeko
 
 Vorim already supplies the identity, policy decision, and signed audit record. Zeko adds an independently observable proof and settlement surface for customers who need evidence outside a vendor-hosted dashboard.
@@ -84,6 +97,8 @@ Do not pass `zeko:sepolia` to `Mina.Network({ networkId })`; it is a protocol id
 - `src/vorim-zeko-adapter.ts` - Vorim decision gate plus upstream MBA and x402 composition.
 - `src/VorimAgentTrustRegistry.ts` - local adapter-only commitment simulation.
 - `src/demo-runner.ts` - local end-to-end demo used by the CLI and browser.
+- `pocs/finfindr/` - runnable FinFindr opportunity-remediation POC.
+- `pocs/kent-ai/` - runnable Kent HOA payment-escalation POC.
 - `vendor/agent-mission-bound-auth` - pinned upstream MBA implementation and canonical zkApps.
 - `vendor/zeko-x402` - pinned upstream x402 implementation.
 - `app/` - browser control surface for decision scenarios.

@@ -58,11 +58,46 @@ export type VorimZekoDemoResult = {
 export type RunVorimZekoDemoOptions = {
   scenario?: MockVorimScenario;
   proofsEnabled?: boolean;
+  profile?: VorimZekoDemoProfile;
+};
+
+export type VorimZekoDemoProfile = {
+  agentId: string;
+  agentDid: string;
+  runtimeId: string;
+  clientId: string;
+  scopes: string[];
+  actionPayload: Record<string, unknown> & { amountNativeUnits: number };
+  counterparty: string;
+  paymentPrefix: string;
+  sessionPrefix: string;
+  maxSpendUsd: string;
+  requiredScope: string;
+};
+
+const defaultProfile: VorimZekoDemoProfile = {
+  agentId: "agid_vorim_demo_agent_001",
+  agentDid: "did:vorim:agent:demo-001",
+  runtimeId: "vorim-local-adapter",
+  clientId: "vorim-demo-client",
+  scopes: ["agent:execute", "agent:transact"],
+  actionPayload: {
+    action: "purchase_compute_credit",
+    amountNativeUnits: 100_000_000,
+    marketplace: "vorim-demo-marketplace",
+    memo: "user supplied payment memo"
+  },
+  counterparty: "vorim-demo-marketplace",
+  paymentPrefix: "vorim",
+  sessionPrefix: "vorim-demo",
+  maxSpendUsd: "1.00",
+  requiredScope: "agent:transact"
 };
 
 export async function runVorimZekoDemo({
   scenario = "allow",
-  proofsEnabled = false
+  proofsEnabled = false,
+  profile = defaultProfile
 }: RunVorimZekoDemoOptions = {}): Promise<VorimZekoDemoResult> {
   const vorim = new MockVorimClient(scenario);
   const local = await Mina.LocalBlockchain({ proofsEnabled });
@@ -97,17 +132,17 @@ export async function runVorimZekoDemo({
   const credential = buildVorimAgentCredential({
     agentAssertion: {
       issuer: "https://api.vorim.ai",
-      audience: "vorim-demo-client",
-      agentId: "agid_vorim_demo_agent_001",
-      agentDid: "did:vorim:agent:demo-001",
+      audience: profile.clientId,
+      agentId: profile.agentId,
+      agentDid: profile.agentDid,
       agentPublicKeyFingerprint: "fp_demo_agent_key",
-      runtimeId: "vorim-local-adapter",
-      scopes: ["agent:execute", "agent:transact"],
+      runtimeId: profile.runtimeId,
+      scopes: profile.scopes,
       issuedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 3600_000).toISOString()
     },
-    clientId: "vorim-demo-client",
-    scope: "agent:transact",
+    clientId: profile.clientId,
+    scope: profile.requiredScope,
     appSalt: "demo-kms-held-salt",
     authContext: { flow: "runtime-decision", controlPlane: "vorim-agent-trust" },
     agentKey: agent.key.toPublicKey(),
@@ -140,33 +175,28 @@ export async function runVorimZekoDemo({
     detail: credential.commitment().toString()
   });
 
-  const actionPayload = {
-    action: "purchase_compute_credit",
-    amountNativeUnits: 100_000_000,
-    marketplace: "vorim-demo-marketplace",
-    memo: "user supplied payment memo"
-  };
+  const actionPayload = profile.actionPayload;
   const x402PaymentTemplate = {
-    requestId: `x402req-vorim-${scenario}`,
-    paymentId: `x402pay-vorim-${scenario}`,
+    requestId: `x402req-${profile.paymentPrefix}-${scenario}`,
+    paymentId: `x402pay-${profile.paymentPrefix}-${scenario}`,
     settlementRail: "zeko",
     networkId: "zeko:sepolia",
     asset: { symbol: "sETH", decimals: 9, standard: "native" },
     payer: agent.key.toPublicKey().toBase58(),
     payTo: delegate.key.toPublicKey().toBase58(),
-    sessionId: `vorim-demo-${scenario}`,
-    maxSpendUsd: "1.00",
-    idempotencyKey: `vorim-demo-${scenario}-0001`
+    sessionId: `${profile.sessionPrefix}-${scenario}`,
+    maxSpendUsd: profile.maxSpendUsd,
+    idempotencyKey: `${profile.paymentPrefix}-${scenario}-0001`
   } as const;
   const authorization = await authorizeZekoAction(vorim, {
-    agentId: "agid_vorim_demo_agent_001",
+    agentId: profile.agentId,
     protocolNetworkId: "zeko:sepolia",
     zkappAddress: zkapp.address.toBase58(),
     method: "settleMission",
     payload: actionPayload,
     payment: x402PaymentTemplate,
-    requiredScope: "agent:transact",
-    idempotencyKey: `demo:${scenario}`
+    requiredScope: profile.requiredScope,
+    idempotencyKey: `${profile.paymentPrefix}:${scenario}`
   });
   timeline.push({
     label: "Vorim runtime decision",
@@ -177,7 +207,7 @@ export async function runVorimZekoDemo({
   const mission = new VorimMissionAuthorization({
     credentialCommitment: credential.commitment(),
     delegateKey: delegate.key.toPublicKey(),
-    audienceHash: fieldFromString("vorim-demo-marketplace"),
+    audienceHash: fieldFromString(profile.counterparty),
     actionHash: authorization.receiptCommitment,
     settlementRecipient: agent.key.toPublicKey(),
     maxAmount: UInt64.from(

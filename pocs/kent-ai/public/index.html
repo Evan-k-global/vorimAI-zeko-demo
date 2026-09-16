@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kent HOA x Vorim x Zeko</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Kent HOA / Vorim / Zeko</p>
+        <h1>Maintenance payment escalation</h1>
+        <p class="lede">A maintenance agent requests a vendor payment tied to private community and work-order records. A consequential action must stop for approval.</p>
+      </header>
+
+      <section class="command" aria-label="POC controls">
+        <div>
+          <p class="eyebrow">Scenario</p>
+          <div class="scenario-group" role="group" aria-label="Vorim decision scenario">
+            <button class="scenario" data-scenario="allow">Allow</button>
+            <button class="scenario" data-scenario="modify">Modify cap</button>
+            <button class="scenario is-active" data-scenario="escalate">Escalate</button>
+            <button class="scenario danger" data-scenario="deny">Deny</button>
+          </div>
+        </div>
+        <button id="run" class="run">Run payment POC</button>
+      </section>
+
+      <section id="status" class="status" aria-live="polite">
+        <strong>Ready</strong>
+        <span>Escalate is selected: the payment will not proceed without a human approval binding.</span>
+      </section>
+
+      <section class="grid">
+        <article>
+          <p class="eyebrow">Vorim</p>
+          <h2>Trusted agent action</h2>
+          <dl>
+            <div><dt>Agent</dt><dd id="agent">-</dd></div>
+            <div><dt>Decision</dt><dd id="decision">-</dd></div>
+            <div><dt>Verdict</dt><dd id="verdict">-</dd></div>
+            <div><dt>Signed records</dt><dd id="audit">-</dd></div>
+          </dl>
+        </article>
+
+        <article>
+          <p class="eyebrow">Privacy boundary</p>
+          <h2>Evidence, not HOA data</h2>
+          <dl>
+            <div><dt>Canonical form</dt><dd id="canonical">-</dd></div>
+            <div><dt>Original digest</dt><dd id="original">-</dd></div>
+            <div><dt>Effective digest</dt><dd id="effective">-</dd></div>
+            <div><dt>Raw payload on Zeko</dt><dd id="raw">-</dd></div>
+          </dl>
+        </article>
+
+        <article>
+          <p class="eyebrow">Zeko</p>
+          <h2>Commitment and reconciliation</h2>
+          <dl>
+            <div><dt>Receipt commitment</dt><dd id="receipt">-</dd></div>
+            <div><dt>Mission root</dt><dd id="root">-</dd></div>
+            <div><dt>Local transaction</dt><dd id="tx">-</dd></div>
+            <div><dt>x402 amount</dt><dd id="amount">-</dd></div>
+          </dl>
+        </article>
+      </section>
+
+      <section class="footnote">
+        <strong>POC boundary:</strong> this local deployment uses a mock Vorim client, an unsigned x402 context, and a local adapter zkApp. No HOA record, resident data, vendor payment, or funds are exposed or executed.
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
