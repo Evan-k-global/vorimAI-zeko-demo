@@ -2,11 +2,11 @@ import type { CustomerPocDefinition } from "../../src/customer-poc.js";
 
 export const kentAiPoc: CustomerPocDefinition = {
   id: "kent-ai",
-  title: "Kent HOA payment escalation",
+  title: "Kent HOA governed maintenance action",
   customerLabel: "Kent AI",
-  summary: "A Kent HOA maintenance agent requests a consequential vendor payment against private community records.",
-  actionLabel: "Release a maintenance payment after escalation",
-  escalationLabel: "A high-stakes HOA payment must stop for human approval before settlement.",
+  summary: "A maintenance agent prepares a vendor settlement from private community records. Vorim proves the agent's authority, stops the consequential action for approval, and preserves a signed record of the outcome.",
+  actionLabel: "Settle an approved maintenance work order",
+  escalationLabel: "The agent can prepare the action, but a separate approver must release it before settlement.",
   profile: {
     agentId: "agid_kent_hoa_maintenance_agent_001",
     agentDid: "did:vorim:agent:kent-hoa-maintenance-001",

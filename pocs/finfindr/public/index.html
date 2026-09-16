@@ -3,16 +3,22 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FinFindr x Vorim x Zeko</title>
+    <title>FinFindr governed agent action</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
     <main>
       <header>
         <p class="eyebrow">FinFindr / <a id="brand-link" href="/"><span id="brand-name">Vorim</span></a> / Zeko</p>
-        <h1>Opportunity remediation evidence</h1>
-        <p class="lede">A discovery agent requests a capped remediation action from private operational and capital-flow records.</p>
+        <h1>Put a signed record behind every operating action.</h1>
+        <p class="lede">A FinFindr discovery agent identifies a private operational opportunity. Vorim establishes which agent acted, what it was allowed to do, and the record a client can verify without exposing the underlying data.</p>
       </header>
+
+      <section class="trust-strip" aria-label="Vorim trust record">
+        <div><strong>Which agent?</strong><span>Cryptographic identity unique to the discovery agent.</span></div>
+        <div><strong>Was it allowed?</strong><span>Scoped authority is enforced before the remediation runs.</span></div>
+        <div><strong>What holds up?</strong><span>A signed record is portable; Zeko anchors only its commitment.</span></div>
+      </section>
 
       <section class="command" aria-label="POC controls">
         <div id="scenario-control">
@@ -24,18 +30,18 @@
             <button class="scenario danger" data-scenario="deny">Deny</button>
           </div>
         </div>
-        <button id="run" class="run">Run remediation POC</button>
+        <button id="run" class="run">Run governed action</button>
       </section>
 
       <section id="status" class="status" aria-live="polite">
         <strong>Ready</strong>
-        <span id="runtime-note">Modify is selected: the policy cap will be applied before the payment context is formed.</span>
+        <span id="runtime-note">Modify is selected: the policy changes the proposed cap before a payment context can be formed.</span>
       </section>
 
       <section class="grid">
         <article>
           <p class="eyebrow">Vorim</p>
-          <h2>Trusted agent action</h2>
+          <h2>Signed agent record</h2>
           <dl>
             <div><dt>Agent</dt><dd id="agent">-</dd></div>
             <div><dt>Decision</dt><dd id="decision">-</dd></div>
@@ -57,7 +63,7 @@
 
         <article>
           <p class="eyebrow">Zeko</p>
-          <h2>Commitment and reconciliation</h2>
+          <h2>Independent commitment</h2>
           <dl>
             <div><dt>Receipt commitment</dt><dd id="receipt">-</dd></div>
             <div><dt>Mission root</dt><dd id="root">-</dd></div>
@@ -68,7 +74,7 @@
       </section>
 
       <section id="poc-boundary" class="footnote">
-        <strong>POC boundary:</strong> this local deployment uses a mock Vorim client, an unsigned x402 context, and a local adapter zkApp. No customer record, remediation, or payment is executed.
+        <strong>POC boundary:</strong> this local deployment uses a mock Vorim client, an unsigned x402 context, and a local adapter zkApp. No customer record, remediation, or payment is executed. The production question is which FinFindr operating action should be first to carry a portable, client-verifiable Vorim record.
       </section>
     </main>
     <script src="/app.js"></script>

@@ -3,16 +3,22 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Kent HOA x Vorim x Zeko</title>
+    <title>Kent HOA governed agent action</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
     <main>
       <header>
         <p class="eyebrow">Kent HOA / <a id="brand-link" href="/"><span id="brand-name">Vorim</span></a> / Zeko</p>
-        <h1>Maintenance payment escalation</h1>
-        <p class="lede">A maintenance agent requests a vendor payment tied to private community and work-order records. A consequential action must stop for approval.</p>
+        <h1>Make consequential maintenance actions accountable.</h1>
+        <p class="lede">A Kent maintenance agent prepares a settlement from private community records. Vorim identifies the agent, enforces its delegated authority at runtime, and produces a signed record that explains why the action stopped or settled.</p>
       </header>
+
+      <section class="trust-strip" aria-label="Vorim trust record">
+        <div><strong>Which agent?</strong><span>Cryptographic identity is bound to the maintenance agent.</span></div>
+        <div><strong>Was it allowed?</strong><span>The agent's scope is checked before it can settle a work order.</span></div>
+        <div><strong>What holds up?</strong><span>The approval and outcome are signed; Zeko anchors only a commitment.</span></div>
+      </section>
 
       <section class="command" aria-label="POC controls">
         <div id="scenario-control">
@@ -24,18 +30,18 @@
             <button class="scenario danger" data-scenario="deny">Deny</button>
           </div>
         </div>
-        <button id="run" class="run">Run payment POC</button>
+        <button id="run" class="run">Run governed action</button>
       </section>
 
       <section id="status" class="status" aria-live="polite">
         <strong>Ready</strong>
-        <span id="runtime-note">Escalate is selected: the payment will not proceed without a human approval binding.</span>
+        <span id="runtime-note">Escalate is selected: the settlement cannot proceed until its separate approval binding resolves.</span>
       </section>
 
       <section class="grid">
         <article>
           <p class="eyebrow">Vorim</p>
-          <h2>Trusted agent action</h2>
+          <h2>Signed agent record</h2>
           <dl>
             <div><dt>Agent</dt><dd id="agent">-</dd></div>
             <div><dt>Decision</dt><dd id="decision">-</dd></div>
@@ -57,7 +63,7 @@
 
         <article>
           <p class="eyebrow">Zeko</p>
-          <h2>Commitment and reconciliation</h2>
+          <h2>Independent commitment</h2>
           <dl>
             <div><dt>Receipt commitment</dt><dd id="receipt">-</dd></div>
             <div><dt>Mission root</dt><dd id="root">-</dd></div>
@@ -68,7 +74,7 @@
       </section>
 
       <section id="poc-boundary" class="footnote">
-        <strong>POC boundary:</strong> this local deployment uses a mock Vorim client, an unsigned x402 context, and a local adapter zkApp. No HOA record, resident data, vendor payment, or funds are exposed or executed.
+        <strong>POC boundary:</strong> this local deployment uses a mock Vorim client, an unsigned x402 context, and a local adapter zkApp. No HOA record, resident data, vendor payment, or funds are exposed or executed. The production question is which Kent action needs a portable, client-verifiable Vorim record first.
       </section>
     </main>
     <script src="/app.js"></script>

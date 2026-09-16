@@ -1,6 +1,6 @@
 # VorimAI on Zeko
 
-Vorim is the trust layer for AI agents: cryptographic identity, scoped permissions, runtime control, and signed tamper-evident action records. This demo shows how a Vorim runtime decision can bind an effective agent action to the existing Agent Mission-Bound Auth receipt format, an x402 payment context, and a Zeko-compatible commitment without publishing the raw regulated payload.
+Vorim is the trust layer for AI agents: cryptographic identity, scoped permissions enforced at runtime, and signed tamper-evident action records. Its customer promise is simple: establish which agent acted, whether it was authorized, and a record an auditor or client can verify without Vorim in the trust path. This demo shows how that record can bind an effective agent action to the existing Agent Mission-Bound Auth receipt format, an x402 payment context, and a Zeko-compatible commitment without publishing the raw regulated payload.
 
 The default demo flow is:
 
@@ -16,8 +16,8 @@ Two runnable local POC deployments apply the same Vorim, Mission-Bound Auth, x40
 
 | POC | Customer workflow | Default path | Run |
 | --- | --- | --- | --- |
-| [FinFindr](pocs/finfindr/README.md) | An opportunity agent proposes a capped remediation after analyzing operational and capital-flow records. | `modify`: policy reduces the proposed cap before x402 context is built. | `npm run poc:finfindr` / `npm run poc:finfindr:app` |
-| [Kent HOA](pocs/kent-ai/README.md) | A maintenance agent requests a consequential vendor payment against community and work-order records. | `escalate`: a human approval binding must resolve before settlement. | `npm run poc:kent-ai` / `npm run poc:kent-ai:app` |
+| [FinFindr](pocs/finfindr/README.md) | A discovery agent takes a governed operating action from private operational and capital-flow records. | `modify`: policy reduces the proposed cap before x402 context is built, so the signed record reflects the action Vorim approved. | `npm run poc:finfindr` / `npm run poc:finfindr:app` |
+| [Kent HOA](pocs/kent-ai/README.md) | A maintenance agent prepares a consequential vendor settlement against private community and work-order records. | `escalate`: a separate approval binding must resolve before settlement, and the outcome is recorded distinctly from the agent action. | `npm run poc:kent-ai` / `npm run poc:kent-ai:app` |
 
 The FinFindr app serves at `http://127.0.0.1:4174`; Kent HOA serves at `http://127.0.0.1:4175`. They are launchable local POC deployments, not live customer systems or production Zeko settlement releases.
 
@@ -29,15 +29,16 @@ The POCs are ready for Vorim to put behind its own frontend and connect to its e
 
 ## What Vorim Gets From Zeko
 
-Vorim already supplies the identity, policy decision, and signed audit record. Zeko adds an independently observable proof and settlement surface for customers who need evidence outside a vendor-hosted dashboard.
+Vorim already supplies the identity, policy decision, and signed audit record. Zeko adds a privacy-preserving, independently observable anchor for customers who need the evidence to stand outside a vendor-hosted dashboard.
 
 - **Independent reconciliation:** a customer or auditor can match a Vorim `decisionId`, receipt hash, payment-context digest, and Zeko commitment.
 - **Privacy-preserving evidence:** public state carries commitments, roots, and nullifiers instead of prompts, policy payloads, secrets, or customer data.
+- **Offline-verifiable customer evidence:** the resulting MBA receipt can be verified without querying Vorim; Zeko makes the selected commitment independently observable.
 - **Portable trust records:** Vorim evidence can travel in the existing MBA receipt and bundle formats.
 - **Payment assurance:** x402 authorization can be bound to the action Vorim actually approved, including a policy-modified amount.
 - **A stronger regulated product:** Vorim can offer policy-to-execution-to-settlement evidence, not only a runtime allow/deny response.
 
-Vorim remains the agent trust layer. Zeko makes selected trust evidence independently verifiable and harder to dispute.
+Vorim remains the neutral agent trust layer and system of record. Zeko makes selected trust evidence independently verifiable and harder to dispute, while the raw regulated record stays in Vorim and the customer's systems.
 
 ## V1 Shipped
 

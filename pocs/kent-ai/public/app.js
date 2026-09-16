@@ -54,11 +54,11 @@ async function loadConfig() {
   const config = await response.json();
   brandName.textContent = config.brand.name;
   if (config.brand.homeUrl) brandLink.href = config.brand.homeUrl;
-  document.title = `Kent HOA x ${config.brand.name} x Zeko`;
+  document.title = `Kent HOA x ${config.brand.name}: governed agent action`;
   if (config.runtimeMode === "vorim-sdk") {
     scenarioControl.hidden = true;
-    runtimeNote.textContent = "Live Vorim SDK mode: the runtime returns the decision; this interface does not simulate a verdict.";
-    boundary.innerHTML = "<strong>Integration mode:</strong> Vorim's SDK supplies the runtime decision and signed records. This POC still uses the local adapter zkApp until the production MissionRegistry settlement path is configured.";
+    runtimeNote.textContent = "Live Vorim SDK mode: Vorim supplies the real decision and signed record; this interface does not simulate either.";
+    boundary.innerHTML = "<strong>Integration mode:</strong> Vorim's SDK supplies the agent identity, runtime decision, and signed records. The local adapter zkApp remains a POC anchor until the production MissionRegistry settlement path is configured.";
   }
 }
 
@@ -72,7 +72,7 @@ buttons.forEach((button) => {
 
 runButton.addEventListener("click", async () => {
   runButton.disabled = true;
-  setStatus("Running", "Waiting for the human approval binding before producing the Zeko commitment.", "running");
+  setStatus("Running", "Checking authority and waiting for the separate approval binding before anchoring the record.", "running");
   try {
     const response = await fetch("/api/run", {
       method: "POST",
@@ -82,7 +82,7 @@ runButton.addEventListener("click", async () => {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "The action did not settle.");
     render(result);
-    setStatus("Committed", "The human-approved action is represented by commitments, not HOA records.", "success");
+    setStatus("Recorded", "The approved action is represented by commitments, not HOA records.", "success");
   } catch (error) {
     setStatus("Stopped", error instanceof Error ? error.message : String(error), "error");
   } finally {
