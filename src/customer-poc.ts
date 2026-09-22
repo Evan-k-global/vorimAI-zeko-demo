@@ -1,5 +1,6 @@
 import { runVorimZekoDemo, type RunVorimZekoDemoOptions, type VorimZekoDemoProfile } from "./demo-runner.js";
 import type { MockVorimScenario } from "./mock-vorim.js";
+import type { VorimApprovalAttestation } from "./vorim-zeko-adapter.js";
 
 export type CustomerPocDefinition = {
   id: "finfindr" | "kent-ai";
@@ -20,7 +21,7 @@ export type CustomerPocResult = {
     decisionId: string;
     verdict: "allow" | "modify";
     policyVersion: number;
-    approvalAlgorithm: "Ed25519" | "P-256";
+    approval?: VorimApprovalAttestation;
     signedActionRecords: number;
   };
   privacy: {
@@ -68,7 +69,7 @@ export async function runCustomerPoc(
       decisionId: result.decisionId,
       verdict: result.vorimBinding.verdict,
       policyVersion: result.vorimBinding.policyVersion,
-      approvalAlgorithm: result.vorimBinding.approvalAlg,
+      ...(result.vorimBinding.approval ? { approval: result.vorimBinding.approval } : {}),
       signedActionRecords: result.emittedAuditRecords
     },
     privacy: {

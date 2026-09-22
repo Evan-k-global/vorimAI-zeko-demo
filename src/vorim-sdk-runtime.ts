@@ -1,6 +1,7 @@
 import type { VorimRuntimeClient } from "./vorim-zeko-adapter.js";
 
 type CreateVorim = (options: { apiKey: string; baseUrl?: string }) => VorimRuntimeClient;
+type JcsCanonicalise = (value: unknown) => string;
 
 export type VorimSdkRuntimeConfig = {
   apiKey: string;
@@ -17,9 +18,9 @@ export async function createVorimSdkRuntime(
   config: VorimSdkRuntimeConfig
 ): Promise<VorimRuntimeClient> {
   const sdkModule = config.sdkModule ?? "@vorim/sdk";
-  let imported: { default?: unknown; createVorim?: unknown };
+  let imported: { default?: unknown; createVorim?: unknown; jcsCanonicalise?: unknown };
   try {
-    imported = await import(sdkModule) as { default?: unknown; createVorim?: unknown };
+    imported = await import(sdkModule) as { default?: unknown; createVorim?: unknown; jcsCanonicalise?: unknown };
   } catch (error) {
     throw new Error(
       `Could not load ${sdkModule}. Install Vorim's SDK in this deployment before setting POC_RUNTIME_MODE=vorim-sdk. ${error instanceof Error ? error.message : String(error)}`
@@ -30,8 +31,12 @@ export async function createVorimSdkRuntime(
   if (typeof createVorim !== "function") {
     throw new Error(`${sdkModule} does not export createVorim as its default or named export.`);
   }
-  return (createVorim as CreateVorim)({
+  if (typeof imported.jcsCanonicalise !== "function") {
+    throw new Error(`${sdkModule} does not export jcsCanonicalise; SDK mode requires Vorim's canonicaliser for signed payload bindings.`);
+  }
+  const runtime = (createVorim as CreateVorim)({
     apiKey: config.apiKey,
     ...(config.baseUrl ? { baseUrl: config.baseUrl } : {})
   });
+  return Object.assign(runtime, { jcsCanonicalise: imported.jcsCanonicalise as JcsCanonicalise });
 }

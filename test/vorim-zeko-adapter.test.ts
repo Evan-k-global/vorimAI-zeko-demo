@@ -8,7 +8,8 @@ import {
   authorizeZekoAction,
   hashIntent,
   recordZekoSettlement,
-  type AuthorizeZekoActionInput
+  type AuthorizeZekoActionInput,
+  type VorimRuntimeClient
 } from "../src/index.js";
 
 const baseInput: AuthorizeZekoActionInput = {
@@ -42,7 +43,7 @@ describe("vorim zeko adapter", () => {
     const result = await authorizeZekoAction(vorim, baseInput);
 
     assert.equal(result.vorimBinding.verdict, "allow");
-    assert.equal(result.vorimBinding.approvalAlg, "Ed25519");
+    assert.equal(result.vorimBinding.approval, undefined);
     assert.equal(result.receipt.schema, "mission-bound-auth-receipt-v1");
     assert.match(result.receipt.receiptId, /^receipt_[a-f0-9]{24}$/);
     assert.equal(typeof result.receipt.receiptHash, "string");
@@ -63,7 +64,7 @@ describe("vorim zeko adapter", () => {
     const result = await authorizeZekoAction(vorim, baseInput);
 
     assert.equal(result.vorimBinding.verdict, "modify");
-    assert.equal(result.vorimBinding.approvalAlg, "Ed25519");
+    assert.equal(result.vorimBinding.approval, undefined);
     assert.notEqual(result.effectiveIntentHash, result.originalIntentHash);
     assert.equal(result.effectivePayload.amountNativeUnits, 50_000_000);
     assert.equal(result.payment.amount, "50000000");
@@ -75,9 +76,53 @@ describe("vorim zeko adapter", () => {
     const result = await authorizeZekoAction(vorim, baseInput);
 
     assert.equal(result.vorimBinding.verdict, "allow");
-    assert.equal(result.vorimBinding.approvalAlg, "P-256");
+    assert.equal(result.vorimBinding.approval?.resolution, "approved");
+    assert.equal(result.vorimBinding.approval?.approverRef, "role:hoa-approver");
+    assert.equal(result.vorimBinding.approval?.alg, "Ed25519");
+    assert.equal(result.vorimBinding.approval?.kid, "mock-vorim-platform-key-1");
+    assert.match(result.vorimBinding.approval?.signature ?? "", /^ed25519:mock:/);
     assert.equal(result.receipt.holder.proofScheme, "digest-holder-proof-v1");
     assert.equal(vorim.auditEvents.length, 1);
+  });
+
+  it("fails closed when an escalation approval times out", async () => {
+    const timeoutError = Object.assign(new Error("approval timed out"), {
+      code: "ESCALATION_TIMEOUT"
+    });
+    const vorim: VorimRuntimeClient = {
+      async beforeAction() {
+        return {
+          decision: "escalate",
+          decisionId: "dec_timeout",
+          expiresAt: "2026-09-16T00:10:00.000Z",
+          policyVersion: 42
+        };
+      },
+      async waitForDecisionResolution() {
+        throw timeoutError;
+      },
+      async emit() {
+        return undefined;
+      }
+    };
+    await assert.rejects(
+      () => authorizeZekoAction(vorim, baseInput),
+      /escalation unresolved; refusing to settle/
+    );
+  });
+
+  it("refuses a resolved escalation without a signed approval attestation", async () => {
+    const vorim = new MockVorimClient("escalate");
+    vorim.waitForDecisionResolution = async (decisionId) => ({
+      decision: "allow",
+      decisionId,
+      expiresAt: "2026-09-16T00:10:00.000Z",
+      policyVersion: 42
+    });
+    await assert.rejects(
+      () => authorizeZekoAction(vorim, baseInput),
+      /without a valid signed approval attestation/
+    );
   });
 
   it("fails closed on fallback", async () => {

@@ -36,7 +36,9 @@ function setStatus(title, detail, kind = "") {
 function render(result) {
   fields.agent.textContent = result.agent.id;
   fields.decision.textContent = result.vorim.decisionId;
-  fields.verdict.textContent = `${result.vorim.verdict} / ${result.vorim.approvalAlgorithm}`;
+  fields.verdict.textContent = result.vorim.approval
+    ? `${result.vorim.verdict} / approved (${result.vorim.approval.alg})`
+    : result.vorim.verdict;
   fields.audit.textContent = String(result.vorim.signedActionRecords);
   fields.canonical.textContent = result.privacy.canonicalization;
   fields.original.textContent = compact(result.privacy.originalPayloadDigest, 18);

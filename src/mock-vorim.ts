@@ -1,5 +1,6 @@
 import { canonicalJson, sha256Hex } from "./hash.js";
 import type {
+  VorimEscalationOptions,
   VorimDecisionVerdict,
   VorimRuntimeClient,
   VorimRuntimeDecision
@@ -61,7 +62,10 @@ export class MockVorimClient implements VorimRuntimeClient {
     return decision;
   }
 
-  async waitForDecisionResolution(decisionId: string): Promise<VorimRuntimeDecision> {
+  async waitForDecisionResolution(
+    decisionId: string,
+    _options: VorimEscalationOptions
+  ): Promise<VorimRuntimeDecision> {
     const pending = this.decisions.get(decisionId);
     if (!pending || pending.decision !== "escalate") {
       throw new Error(`No pending escalation for ${decisionId}.`);
@@ -69,7 +73,20 @@ export class MockVorimClient implements VorimRuntimeClient {
     const resolved: VorimRuntimeDecision = {
       ...pending,
       decision: "allow",
-      reason: "Human approver released the action from a secure element."
+      reason: "Mock operator approval released the action.",
+      approval: {
+        resolution: "approved",
+        resolvedAt: new Date(this.now.getTime() + 30_000).toISOString(),
+        approverRef: "role:hoa-approver",
+        alg: "Ed25519",
+        kid: "mock-vorim-platform-key-1",
+        signature: `ed25519:mock:${sha256Hex(canonicalJson({
+          decisionId,
+          resolution: "approved",
+          resolvedAt: new Date(this.now.getTime() + 30_000).toISOString(),
+          approverRef: "role:hoa-approver"
+        })).slice(0, 48)}`
+      }
     };
     this.decisions.set(decisionId, resolved);
     return resolved;

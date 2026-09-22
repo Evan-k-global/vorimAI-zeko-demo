@@ -16,16 +16,24 @@ The repository pins two upstream implementations as git submodules and runtime d
 The Vorim adapter owns only this composition:
 
 1. Call Vorim `beforeAction` with the proposed action and scope.
-2. Reject `fallback`, `deny`, or unresolved `escalate` outcomes.
+2. Reject `fallback`, `deny`, unresolved `escalate`, and an escalation timeout. The adapter waits up to 15 minutes with a two-second poll interval before refusing settlement.
 3. Replace the proposed payload with `modifiedPayload` when required.
 4. Build the x402 payment context from the effective amount.
 5. Bind the Vorim decision fields into an MBA policy and receipt statement.
 6. Verify the MBA trace and receipt before emitting the signed Vorim authorization event.
 7. Emit settlement success only after the observed commitment matches the expected commitment.
 
-The `VorimDecisionBinding` remains adjacent to the canonical MBA receipt because the current upstream receipt schema has `additionalProperties: false`. Injecting Vorim-specific fields into that receipt would make it non-conformant.
+The `VorimDecisionBinding` remains adjacent to the canonical MBA receipt because the current upstream receipt schema has `additionalProperties: false`. Injecting Vorim-specific fields into that receipt would make it non-conformant. Its digest is included in the MBA statement hash, so the verified receipt commits to the decision evidence without changing MBA's schema.
 
-Vorim's `approvalAlg` also stays separate from `receipt.holder.proofScheme`. A P-256 human approval is not the same cryptographic leg as an agent holder proof or an o1js/Pallas zkApp signature.
+An escalated action now requires Vorim's actual signed approval attestation: `resolution`, `resolvedAt`, opaque `approverRef`, `alg`, `kid`, and `signature`. The adapter never synthesizes an `approvalAlg` label. A future P-256 device approval is a distinct signed artefact, not a relabeling of a platform Ed25519 signature.
+
+## Portable Vorim Receipt And MBA Mapping
+
+`mintPortableSignedReceipt` is a Vorim API/SDK responsibility, not a client-side composition. Its signed, explicitly versioned body should include the decision fields, original and effective JCS intent hashes, policy-modified flag, and (when present) the full approval attestation. The signature must cover the enumerated body and nothing inferred from a database row.
+
+MBA can carry the portable object today as an off-chain, signed artefact whose digest is committed in the decision binding and MBA statement hash. The present `MissionCompliancePublicInput` does not, however, have a standalone Vorim decision or approval-attestation field. Before a production proof makes this evidence load-bearing, the upstream MBA mapping must explicitly bind the portable-receipt field commitment into `authCommitment` or add a dedicated public commitment that feeds `approvalCommitment`. That is a joint protocol change, not something this adapter should quietly invent.
+
+Do not place a raw `resolved_by` user UUID in portable evidence or any anchorable object. Use an opaque role reference or a per-organization HMAC/commitment, with Vorim retaining the resolver mapping in its own system of record.
 
 ## Network Identity Split
 

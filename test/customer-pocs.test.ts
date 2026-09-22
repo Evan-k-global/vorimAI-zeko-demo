@@ -26,11 +26,12 @@ describe("customer POCs", () => {
     assert.equal(JSON.stringify(result).includes("private:finfindr"), false);
   });
 
-  it("runs Kent's human-escalation path and reports a distinct approval algorithm", async () => {
+  it("runs Kent's escalation path with a signed approval attestation", async () => {
     const result = await runCustomerPoc(kentAiPoc, { scenario: "escalate" });
 
     assert.equal(result.vorim.verdict, "allow");
-    assert.equal(result.vorim.approvalAlgorithm, "P-256");
+    assert.equal(result.vorim.approval?.alg, "Ed25519");
+    assert.match(result.vorim.approval?.signature ?? "", /^ed25519:mock:/);
     assert.equal(result.privacy.rawPayloadPublishedToZeko, false);
     assert.equal(JSON.stringify(result).includes("private:kent-hoa"), false);
   });
