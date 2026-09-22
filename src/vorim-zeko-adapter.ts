@@ -31,7 +31,7 @@ export type VorimApprovalAttestation = {
   resolution: "approved";
   resolvedAt: string;
   /** Opaque role reference or per-org commitment, never a raw user identifier. */
-  approverRef?: string;
+  approverRef?: string | null;
   alg: "Ed25519";
   kid: string;
   signature: string;

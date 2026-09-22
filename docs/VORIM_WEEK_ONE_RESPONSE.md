@@ -29,11 +29,11 @@ For a production proof, jointly choose one explicit mapping before implementatio
 - bind the portable receipt's JCS digest/field commitment into `authCommitment` and include the approval-attestation digest in the derived approval commitment; or
 - add a dedicated portable-receipt commitment to MBA's public input and make it part of the approval and receipt commitment equations.
 
-Either approach must preserve the actual approval signature off-chain for independent verification with Vorim's `GET /trust/keys` endpoint. A future circuit can make that key verification load-bearing; this adapter must not claim it already is.
+Vorim's preference is the dedicated field: it makes the dependency legible in the circuit and permits the portable-receipt and MBA formats to version independently. Either approach must preserve the actual approval signature off-chain for independent verification with Vorim's `GET /trust/keys` endpoint. A future circuit can make that key verification load-bearing; this adapter must not claim it already is.
 
 ## Privacy Decision
 
-`approverRef` must be an opaque role reference or a per-organization HMAC/commitment. A raw user UUID should stay in Vorim's private system of record and must not enter a portable object that may later be anchored.
+`approverRef` must be an opaque role reference or a per-organization HMAC/commitment. A raw user UUID should stay in Vorim's private system of record and must not enter a portable object that may later be anchored. `null` is intentional: Vorim checked and has no safe reference to disclose; omitted means the field was not populated.
 
 ## Positioning
 
