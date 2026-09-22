@@ -37,6 +37,36 @@ export type VorimApprovalAttestation = {
   signature: string;
 };
 
+/** Issuer-owned evidence returned by Vorim SDK 3.22.0 or later. */
+export type VorimPortableSignedReceipt = {
+  version: "vorim-portable-receipt-v1";
+  decision: {
+    decisionId: string;
+    verdict: "allow" | "modify";
+    agentId: string;
+    requiredScope: string | null;
+    actionType: "tool_call";
+    actionTarget: string;
+    policyVersion: number;
+    decisionRuleId: string | null;
+    requestedAt: string;
+    expiresAt: string;
+  };
+  binding: {
+    originalIntentHash: string;
+    effectiveIntentHash: string;
+    policyModified: boolean;
+  };
+  approval: VorimApprovalAttestation | null;
+  orgId: string;
+  issuedAt: string;
+  canonicalForm: "v1";
+  digest: string;
+  signature: string;
+  kid: string;
+  alg: "Ed25519";
+};
+
 export type VorimEscalationOptions = {
   timeoutMs: number;
   pollIntervalMs: number;
@@ -61,11 +91,13 @@ export type VorimRuntimeClient = {
   ): Promise<VorimRuntimeDecision>;
   /** Supplied by @vorim/sdk in SDK mode; mock mode uses the local RFC 8785 implementation. */
   jcsCanonicalise?(value: unknown): string;
+  mintPortableSignedReceipt?(decisionId: string): Promise<VorimPortableSignedReceipt>;
+  portableReceiptCanonicalBytes?(receipt: VorimPortableSignedReceipt): Uint8Array;
   emit(event: Record<string, unknown>, options: { sign: true }): Promise<unknown>;
 };
 
 export type VorimDecisionBinding = {
-  version: "vorim-zeko-decision-binding-v2";
+  version: "vorim-zeko-decision-binding-v3";
   agentId: string;
   decisionId: string;
   verdict: "allow" | "modify";
@@ -75,6 +107,7 @@ export type VorimDecisionBinding = {
   effectiveIntentHash: string;
   expiresAt: string;
   policyVersion: number;
+  portableReceipt: VorimPortableSignedReceipt;
   approval?: VorimApprovalAttestation;
 };
 
@@ -123,6 +156,7 @@ export interface AuthorizeZekoActionResult {
   receiptCommitmentDecimal: string;
   receiptCommitmentHex: string;
   decisionId: string;
+  portableReceipt: VorimPortableSignedReceipt;
   originalIntentHash: string;
   effectiveIntentHash: string;
   effectivePayload: Record<string, unknown>;
@@ -225,6 +259,57 @@ function approvalForDecision(
   return approval;
 }
 
+async function portableReceiptForDecision(
+  vorim: VorimRuntimeClient,
+  input: {
+    decision: VorimRuntimeDecision;
+    agentId: string;
+    requiredScope: string;
+    originalIntentHash: string;
+    effectiveIntentHash: string;
+    verdict: "allow" | "modify";
+    approval?: VorimApprovalAttestation;
+  }
+): Promise<VorimPortableSignedReceipt> {
+  if (!vorim.mintPortableSignedReceipt || !vorim.portableReceiptCanonicalBytes) {
+    throw new Error("Vorim runtime does not expose portable receipt support; SDK 3.22.0 or later is required to settle.");
+  }
+  const receipt = await vorim.mintPortableSignedReceipt(input.decision.decisionId);
+  if (
+    receipt.version !== "vorim-portable-receipt-v1" ||
+    receipt.decision.decisionId !== input.decision.decisionId ||
+    receipt.decision.agentId !== input.agentId ||
+    receipt.decision.verdict !== input.verdict ||
+    receipt.decision.actionType !== "tool_call" ||
+    receipt.decision.policyVersion !== input.decision.policyVersion ||
+    receipt.decision.expiresAt !== input.decision.expiresAt ||
+    receipt.binding.originalIntentHash !== input.originalIntentHash ||
+    receipt.binding.effectiveIntentHash !== input.effectiveIntentHash ||
+    receipt.binding.policyModified !== (input.verdict === "modify") ||
+    (receipt.decision.requiredScope !== null && receipt.decision.requiredScope !== input.requiredScope) ||
+    receipt.alg !== "Ed25519" ||
+    !receipt.kid ||
+    !receipt.signature.startsWith("ed25519:")
+  ) {
+    throw new Error("Vorim portable receipt does not match the approved action; refusing to settle.");
+  }
+  if (
+    (input.approval && canonicalJson(receipt.approval) !== canonicalJson(input.approval)) ||
+    (!input.approval && receipt.approval !== null)
+  ) {
+    throw new Error("Vorim portable receipt approval does not match the resolved decision; refusing to settle.");
+  }
+  const canonicalBytes = vorim.portableReceiptCanonicalBytes(receipt);
+  if (!(canonicalBytes instanceof Uint8Array)) {
+    throw new Error("Vorim portable receipt canonicaliser did not return bytes; refusing to settle.");
+  }
+  const derivedDigest = `sha256:${sha256JcsHex(Buffer.from(canonicalBytes))}`;
+  if (receipt.digest !== derivedDigest) {
+    throw new Error("Vorim portable receipt digest does not match its canonical bytes; refusing to settle.");
+  }
+  return receipt;
+}
+
 export async function authorizeZekoAction(
   vorim: VorimRuntimeClient,
   input: AuthorizeZekoActionInput
@@ -258,6 +343,15 @@ export async function authorizeZekoAction(
   const approved = approvedPayloadForDecision(decision, input.payload);
   const approval = approvalForDecision(initialDecision, decision);
   const effectiveIntentHash = hashIntentWithVorimCanonicaliser(vorim, approved.payload);
+  const portableReceipt = await portableReceiptForDecision(vorim, {
+    decision,
+    agentId: input.agentId,
+    requiredScope,
+    originalIntentHash,
+    effectiveIntentHash,
+    verdict: approved.verdict,
+    ...(approval ? { approval } : {})
+  });
   const amountNativeUnits = approved.payload.amountNativeUnits;
   if (
     (typeof amountNativeUnits !== "number" && typeof amountNativeUnits !== "string") ||
@@ -290,6 +384,7 @@ export async function authorizeZekoAction(
       vorimVerdict: approved.verdict,
       originalIntentHash,
       effectiveIntentHash,
+      vorimPortableReceiptDigest: portableReceipt.digest,
       ...(approval ? { vorimApprovalHash: sha256Hex(approval) } : {})
     }
   });
@@ -334,7 +429,7 @@ export async function authorizeZekoAction(
   if (!trace.valid) throw new Error(trace.reason ?? "Mission-Bound Auth trace verification failed.");
 
   const vorimBinding: VorimDecisionBinding = {
-    version: "vorim-zeko-decision-binding-v2",
+    version: "vorim-zeko-decision-binding-v3",
     agentId: input.agentId,
     decisionId: decision.decisionId,
     verdict: approved.verdict,
@@ -344,6 +439,7 @@ export async function authorizeZekoAction(
     effectiveIntentHash,
     expiresAt: decision.expiresAt,
     policyVersion: decision.policyVersion,
+    portableReceipt,
     ...(approval ? { approval } : {})
   };
   const allowedDomainsHash = sha256Hex(missionPolicy.allowedDomains);
@@ -411,6 +507,8 @@ export async function authorizeZekoAction(
         receipt_commitment_hex: receiptCommitmentHex,
         receipt_hash: receipt.receiptHash,
         receipt_id: receipt.receiptId,
+        vorim_portable_receipt_digest: portableReceipt.digest,
+        vorim_portable_receipt_kid: portableReceipt.kid,
         original_intent_hash: originalIntentHash,
         effective_payload: approved.payload,
         x402_payment_context_digest: payment.paymentContextDigest,
@@ -435,6 +533,7 @@ export async function authorizeZekoAction(
     receiptCommitmentDecimal,
     receiptCommitmentHex,
     decisionId: decision.decisionId,
+    portableReceipt,
     originalIntentHash,
     effectiveIntentHash,
     effectivePayload: approved.payload

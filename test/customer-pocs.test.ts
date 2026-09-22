@@ -20,6 +20,8 @@ describe("customer POCs", () => {
     const result = await runCustomerPoc(finfindrPoc, { scenario: "modify" });
 
     assert.equal(result.vorim.verdict, "modify");
+    assert.equal(result.vorim.portableReceipt.version, "vorim-portable-receipt-v1");
+    assert.match(result.vorim.portableReceipt.digest, /^sha256:/);
     assert.equal(result.x402.amountNativeUnits, "50000000");
     assert.notEqual(result.privacy.originalPayloadDigest, result.privacy.effectivePayloadDigest);
     assert.equal(result.privacy.rawPayloadPublishedToZeko, false);
@@ -32,6 +34,7 @@ describe("customer POCs", () => {
     assert.equal(result.vorim.verdict, "allow");
     assert.equal(result.vorim.approval?.alg, "Ed25519");
     assert.match(result.vorim.approval?.signature ?? "", /^ed25519:mock:/);
+    assert.equal(result.vorim.portableReceipt.version, "vorim-portable-receipt-v1");
     assert.equal(result.privacy.rawPayloadPublishedToZeko, false);
     assert.equal(JSON.stringify(result).includes("private:kent-hoa"), false);
   });

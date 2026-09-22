@@ -6,12 +6,12 @@ This document records the adapter response to Vorim's 22 September 2026 integrat
 
 1. An escalation resolution is awaited with a 15-minute deadline and a two-second poll interval. `ESCALATION_TIMEOUT` becomes a clean refusal to settle.
 2. A resolved escalation must return an actual Vorim approval attestation. The adapter accepts only a signed Ed25519 attestation with `resolution`, `resolvedAt`, `kid`, and `signature`; it has no synthetic P-256 branch.
-3. The complete approval object, when present, is included in the versioned Vorim decision binding. Its digest is constrained in the MBA mission policy and included in the MBA statement hash.
+3. The adapter calls Vorim's `mintPortableSignedReceipt` and uses Vorim's `portableReceiptCanonicalBytes` export to verify the returned digest. The complete receipt, including approval when present, is included in the versioned Vorim decision binding; its digest is constrained in the MBA mission policy and included in the MBA statement hash.
 4. SDK mode requires and calls `jcsCanonicalise` from `@vorim/sdk` for original and effective intent digests. The local RFC 8785 implementation remains only for the credential-free mock demo.
 
 ## Portable Receipt Contract
 
-Vorim should expose `mintPortableSignedReceipt` from its API and SDKs. It should refuse `deny`, `fallback`, and unresolved `escalate` decisions. The signed body is explicitly enumerated and JCS-canonicalized before signing:
+Vorim exposes `mintPortableSignedReceipt` from its API and SDKs. It refuses `deny`, `fallback`, and unresolved `escalate` decisions. The signed body is explicitly enumerated and JCS-canonicalized before signing:
 
 - decision: decision ID, verdict, agent ID, required scope, action type/target, policy version, optional rule ID, expiry, and request time;
 - binding: original and effective intent hashes plus policy-modified state;
@@ -22,7 +22,7 @@ Adding a signed field requires a new portable-receipt version. The exporter must
 
 ## MBA Production Mapping
 
-The existing MBA `MissionCompliancePublicInput` has `authCommitment` and `approvalCommitment`, but it does not currently expose a dedicated Vorim receipt or approval-attestation field. The current adapter therefore produces a valid MBA receipt while committing the Vorim binding through its statement hash; that is suitable for the local evidence POC, not yet a proof that verifies Vorim's Ed25519 signature inside the zkApp.
+The existing MBA `MissionCompliancePublicInput` has `authCommitment` and `approvalCommitment`, but it does not currently expose a dedicated Vorim receipt or approval-attestation field. The adapter therefore produces a valid MBA receipt while committing the signed Vorim receipt through its statement hash; that is suitable for the local evidence POC, not yet a proof that verifies Vorim's Ed25519 signature inside the zkApp.
 
 For a production proof, jointly choose one explicit mapping before implementation:
 

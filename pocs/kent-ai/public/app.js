@@ -12,6 +12,7 @@ const fields = {
   agent: document.querySelector("#agent"),
   decision: document.querySelector("#decision"),
   verdict: document.querySelector("#verdict"),
+  portable: document.querySelector("#portable"),
   audit: document.querySelector("#audit"),
   canonical: document.querySelector("#canonical"),
   original: document.querySelector("#original"),
@@ -39,6 +40,7 @@ function render(result) {
   fields.verdict.textContent = result.vorim.approval
     ? `${result.vorim.verdict} / approved (${result.vorim.approval.alg})`
     : result.vorim.verdict;
+  fields.portable.textContent = compact(result.vorim.portableReceipt.digest, 18);
   fields.audit.textContent = String(result.vorim.signedActionRecords);
   fields.canonical.textContent = result.privacy.canonicalization;
   fields.original.textContent = compact(result.privacy.originalPayloadDigest, 18);

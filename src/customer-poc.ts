@@ -1,6 +1,6 @@
 import { runVorimZekoDemo, type RunVorimZekoDemoOptions, type VorimZekoDemoProfile } from "./demo-runner.js";
 import type { MockVorimScenario } from "./mock-vorim.js";
-import type { VorimApprovalAttestation } from "./vorim-zeko-adapter.js";
+import type { VorimApprovalAttestation, VorimPortableSignedReceipt } from "./vorim-zeko-adapter.js";
 
 export type CustomerPocDefinition = {
   id: "finfindr" | "kent-ai";
@@ -22,6 +22,7 @@ export type CustomerPocResult = {
     verdict: "allow" | "modify";
     policyVersion: number;
     approval?: VorimApprovalAttestation;
+    portableReceipt: Pick<VorimPortableSignedReceipt, "version" | "digest" | "kid" | "alg">;
     signedActionRecords: number;
   };
   privacy: {
@@ -70,6 +71,12 @@ export async function runCustomerPoc(
       verdict: result.vorimBinding.verdict,
       policyVersion: result.vorimBinding.policyVersion,
       ...(result.vorimBinding.approval ? { approval: result.vorimBinding.approval } : {}),
+      portableReceipt: {
+        version: result.portableReceipt.version,
+        digest: result.portableReceipt.digest,
+        kid: result.portableReceipt.kid,
+        alg: result.portableReceipt.alg
+      },
       signedActionRecords: result.emittedAuditRecords
     },
     privacy: {

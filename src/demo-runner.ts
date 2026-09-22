@@ -47,6 +47,7 @@ export type VorimZekoDemoResult = {
   originalIntentHash: string;
   effectiveIntentHash: string;
   effectivePayload: Record<string, unknown>;
+  portableReceipt: AuthorizeZekoActionResult["portableReceipt"];
   receipt: AuthorizeZekoActionResult["receipt"];
   vorimBinding: AuthorizeZekoActionResult["vorimBinding"];
   receiptCanonicalJson: string;
@@ -285,6 +286,7 @@ export async function runVorimZekoDemo({
     originalIntentHash: authorization.originalIntentHash,
     effectiveIntentHash: authorization.effectiveIntentHash,
     effectivePayload: authorization.effectivePayload,
+    portableReceipt: authorization.portableReceipt,
     receipt: authorization.receipt,
     vorimBinding: authorization.vorimBinding,
     receiptCanonicalJson: authorization.receiptCanonicalJson,

@@ -61,7 +61,7 @@ The v1 browser run prepares an unsigned x402 payment context; it does not move r
 
 The larger commercial unlock is a production evidence chain:
 
-- **Vorim portable signed receipt:** add Vorim's SDK/control-plane method that exports the explicitly enumerated, JCS-signed decision and approval binding instead of composing it client-side. See [the week-one response](docs/VORIM_WEEK_ONE_RESPONSE.md).
+- **Vorim portable signed receipt:** SDK mode calls Vorim's `mintPortableSignedReceipt` and verifies its digest using Vorim's canonical-byte export before binding it into MBA. See [the week-one response](docs/VORIM_WEEK_ONE_RESPONSE.md).
 - **MBA proof inputs:** map Vorim's decision, policy version, effective action, and holder key into the upstream `MissionComplianceProgram` public statement and witness inputs.
 - **Trustless settlement:** settle through the canonical MBA `MissionRegistry`, with proof artifact, domain attestation, nullifier, receipt root, and escrow state all checked together.
 - **x402 execution:** sign and settle the prepared x402 payload through the existing Zeko x402 contract or use its reserve/release implementation when conditional payment is required.
@@ -165,7 +165,7 @@ Run `npm run doctor` before any live transaction. Never commit `.env`, private k
 
 ## CTA
 
-Use this v1 as the week-one integration artifact with Vorim. The concrete joint design task is a production `mintPortableSignedReceipt` SDK/control-plane method plus an explicit mapping from Vorim decision and approval evidence into the upstream MBA compliance statement. Once that is agreed, the existing MBA registry and x402 settlement contracts can enforce the evidence instead of this repo growing another protocol.
+Use this v1 as the week-one integration artifact with Vorim. The remaining joint design task is a dedicated portable-receipt commitment in the upstream MBA compliance statement. Once that is agreed, the existing MBA registry and x402 settlement contracts can enforce the evidence instead of this repo growing another protocol.
 
 ## Licensing
 

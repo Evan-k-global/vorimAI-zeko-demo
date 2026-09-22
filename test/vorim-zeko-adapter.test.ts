@@ -44,6 +44,9 @@ describe("vorim zeko adapter", () => {
 
     assert.equal(result.vorimBinding.verdict, "allow");
     assert.equal(result.vorimBinding.approval, undefined);
+    assert.equal(result.portableReceipt.version, "vorim-portable-receipt-v1");
+    assert.match(result.portableReceipt.digest, /^sha256:/);
+    assert.equal(result.vorimBinding.portableReceipt.digest, result.portableReceipt.digest);
     assert.equal(result.receipt.schema, "mission-bound-auth-receipt-v1");
     assert.match(result.receipt.receiptId, /^receipt_[a-f0-9]{24}$/);
     assert.equal(typeof result.receipt.receiptHash, "string");
@@ -122,6 +125,19 @@ describe("vorim zeko adapter", () => {
     await assert.rejects(
       () => authorizeZekoAction(vorim, baseInput),
       /without a valid signed approval attestation/
+    );
+  });
+
+  it("refuses a portable receipt whose canonical digest does not verify", async () => {
+    const vorim = new MockVorimClient("allow");
+    const mint = vorim.mintPortableSignedReceipt.bind(vorim);
+    vorim.mintPortableSignedReceipt = async (decisionId) => ({
+      ...(await mint(decisionId)),
+      digest: "sha256:tampered"
+    });
+    await assert.rejects(
+      () => authorizeZekoAction(vorim, baseInput),
+      /digest does not match its canonical bytes/
     );
   });
 

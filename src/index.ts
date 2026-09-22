@@ -29,6 +29,7 @@ export {
   type VorimRuntimeDecision,
   type VorimApprovalAttestation,
   type VorimEscalationOptions,
+  type VorimPortableSignedReceipt,
   type VorimDecisionBinding,
   type X402PaymentTemplate
 } from "./vorim-zeko-adapter.js";

@@ -29,9 +29,11 @@ An escalated action now requires Vorim's actual signed approval attestation: `re
 
 ## Portable Vorim Receipt And MBA Mapping
 
-`mintPortableSignedReceipt` is a Vorim API/SDK responsibility, not a client-side composition. Its signed, explicitly versioned body should include the decision fields, original and effective JCS intent hashes, policy-modified flag, and (when present) the full approval attestation. The signature must cover the enumerated body and nothing inferred from a database row.
+`mintPortableSignedReceipt` is a Vorim API/SDK responsibility, not a client-side composition. In SDK mode the adapter calls it after Vorim resolves the action, then uses Vorim's `portableReceiptCanonicalBytes` export to verify the returned digest before building the MBA statement. Its signed, explicitly versioned body includes the decision fields, original and effective JCS intent hashes, policy-modified flag, and (when present) the full approval attestation. The signature covers the enumerated body and nothing inferred from a database row.
 
-MBA can carry the portable object today as an off-chain, signed artefact whose digest is committed in the decision binding and MBA statement hash. The present `MissionCompliancePublicInput` does not, however, have a standalone Vorim decision or approval-attestation field. Before a production proof makes this evidence load-bearing, the upstream MBA mapping must explicitly bind the portable-receipt field commitment into `authCommitment` or add a dedicated public commitment that feeds `approvalCommitment`. That is a joint protocol change, not something this adapter should quietly invent.
+MBA carries the portable object today as an off-chain, signed artefact whose digest is committed in the decision binding and MBA statement hash. The present `MissionCompliancePublicInput` does not, however, have a standalone Vorim decision or approval-attestation field. Before a production proof makes this evidence load-bearing, the upstream MBA mapping must add Vorim's preferred dedicated portable-receipt commitment and feed it into the approval and receipt commitment equations. That is a joint protocol change, not something this adapter should quietly invent.
+
+Vorim's current receipt may report `decision.requiredScope` as `null`; the adapter therefore continues to enforce its server-side requested scope but does not represent that nullable receipt field as independently evidenced until Vorim ships a version that persists it.
 
 Do not place a raw `resolved_by` user UUID in portable evidence or any anchorable object. Use an opaque role reference or a per-organization HMAC/commitment, with Vorim retaining the resolver mapping in its own system of record.
 
